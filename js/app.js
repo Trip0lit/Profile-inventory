@@ -233,7 +233,7 @@
 
     return `
       <article class="card activity reveal ${revealed.has(act.id) ? 'in' : ''} ${isOpen ? 'open' : ''}" data-activity="${act.id}" data-reveal="${act.id}">
-        <div class="activity-top">
+        <div class="activity-top" tabindex="0" role="button" aria-label="Afficher la progression de ${esc(act.title)}">
           <div class="card-media">
             ${media}
             <span class="card-num">${num}</span>
@@ -254,8 +254,8 @@
                 <span><i class="dot-todo"></i>${c.todo} à exécuter</span>
               </div>
             </div>
-            <button type="button" class="link-arrow activity-toggle" data-action="toggle" aria-expanded="${isOpen}">
-              <span class="toggle-label">${isOpen ? 'Masquer le détail' : 'Voir le détail'}</span><span class="toggle-icon">↓</span>
+            <button type="button" class="link-arrow activity-toggle" data-action="toggle" aria-expanded="${isOpen}" tabindex="-1">
+              <span class="toggle-label">${isOpen ? 'Masquer la progression' : 'Voir la progression'}</span><span class="toggle-icon">↓</span>
             </button>
           </div>
         </div>
@@ -370,7 +370,35 @@
   /* ---------- Événements : activités ---------- */
   const activitiesRoot = $('#activities');
 
+  function toggleActivity(node) {
+    const open = !node.classList.contains('open');
+    const btn = $('.activity-toggle', node);
+    node.classList.toggle('open', open);
+    btn.setAttribute('aria-expanded', open);
+    $('.toggle-label', btn).textContent = open ? 'Masquer la progression' : 'Voir la progression';
+    open ? openActivities.add(node.dataset.activity) : openActivities.delete(node.dataset.activity);
+    if (open) setTimeout(() => node.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+  }
+
+  // Un clic n'importe où sur la carte (hors champs et boutons d'édition) ouvre la progression
+  function isCardToggleClick(target) {
+    if (!target.closest('.activity-top')) return false;
+    if (target.closest('[data-action="toggle"]')) return true;
+    return !target.closest('[contenteditable], [data-action], label, input, button, a');
+  }
+
+  activitiesRoot.addEventListener('keydown', e => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('activity-top')) {
+      e.preventDefault();
+      toggleActivity(e.target.closest('.activity'));
+    }
+  });
+
   activitiesRoot.addEventListener('click', e => {
+    if (isCardToggleClick(e.target)) {
+      toggleActivity(e.target.closest('.activity'));
+      return;
+    }
     const btn = e.target.closest('[data-action]');
     if (!btn || btn.tagName === 'FORM' || btn.tagName === 'INPUT') return;
     const act = findActivity(btn);
@@ -378,16 +406,6 @@
     const task = findTask(act, btn);
     const action = btn.dataset.action;
 
-    if (action === 'toggle') {
-      const node = btn.closest('.activity');
-      const open = !node.classList.contains('open');
-      node.classList.toggle('open', open);
-      btn.setAttribute('aria-expanded', open);
-      $('.toggle-label', btn).textContent = open ? 'Masquer le détail' : 'Voir le détail';
-      open ? openActivities.add(act.id) : openActivities.delete(act.id);
-      if (open) setTimeout(() => node.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
-      return;
-    }
     if (action === 'open-photo') {
       openLightbox(task.photos, +btn.dataset.index, task.text);
       return;
