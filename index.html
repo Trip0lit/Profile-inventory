@@ -21,9 +21,9 @@
     <nav class="nav">
       <a class="logo" href="#top"><span data-edit="profile.logo"></span><sup>®</sup></a>
       <div class="nav-links">
-        <a href="#profil">Profil</a>
-        <a href="#activites">Activités</a>
-        <a href="#contact">Contact</a>
+        <a href="#top"><span class="nav-num">01</span>Accueil</a>
+        <a href="#profil"><span class="nav-num">02</span>À propos</a>
+        <a href="#activites"><span class="nav-num">03</span>Activités</a>
       </div>
     </nav>
 
@@ -33,7 +33,7 @@
     </div>
 
     <div class="hero-bottom">
-      <a class="scroll-cue" href="#profil">Défiler pour creuser <span class="arrow-down">↓</span></a>
+      <a class="scroll-cue" href="#profil"><span class="section-num">01</span> Défiler pour découvrir <span class="arrow-down">↓</span></a>
       <div class="hero-lead">
         <p><strong data-edit="profile.leadStrong"></strong> <span data-edit="profile.lead"></span></p>
         <a class="link-arrow" href="#activites">Voir mes activités <span>→</span></a>
@@ -42,29 +42,52 @@
   </header>
 
   <main>
-    <!-- PROFIL -->
-    <section class="section profile" id="profil">
-      <div class="split">
-        <h2 class="display">Joueur, juriste,<br><em>bâtisseur</em></h2>
-        <div class="split-right">
-          <p class="lead" data-edit="profile.intro"></p>
-          <a class="link-arrow" href="#activites">Explorer mes projets <span>→</span></a>
-        </div>
+    <!-- PARTIE 2 : À PROPOS -->
+    <section class="section about" id="profil">
+      <div class="section-head reveal">
+        <span class="section-num">02</span>
+        <h2 class="section-title">À <em>propos</em></h2>
+        <span class="section-rule" aria-hidden="true"></span>
+        <span class="section-meta">Qui je suis</span>
       </div>
 
-      <div class="traits" id="traits"></div>
+      <article class="card about-card reveal">
+        <div class="about-portrait" id="portrait"></div>
+        <div class="about-info">
+          <div class="about-top">
+            <span class="eyebrow" data-edit="profile.role"></span>
+            <span class="about-level" id="aboutLevel"></span>
+          </div>
+          <h3 class="about-name" data-edit="profile.name"></h3>
+          <p class="about-tagline" data-edit="profile.tagline"></p>
+          <p class="about-bio" data-edit="profile.intro"></p>
 
-      <dl class="stats" id="stats"></dl>
+          <hr class="rule">
+          <span class="eyebrow">En bref</span>
+          <dl class="inventory" id="inventory"></dl>
+          <button type="button" class="icon-btn edit-only add-inventory" id="addInventory">＋ Ajouter une ligne</button>
+
+          <hr class="rule">
+          <span class="eyebrow">Devise</span>
+          <p class="about-motto" data-edit="profile.motto"></p>
+        </div>
+      </article>
+
+      <div class="traits" id="traits"></div>
     </section>
 
-    <!-- ACTIVITÉS -->
+    <!-- PARTIE 3 : ACTIVITÉS -->
     <section class="section activities-section" id="activites">
-      <div class="split">
-        <h2 class="display">Ce que je<br><em>construis</em></h2>
-        <div class="split-right">
-          <p class="lead">Chaque projet avance en trois temps : <span class="tag tag-done">Accompli</span> <span class="tag tag-doing">En cours</span> <span class="tag tag-todo">À exécuter</span>. La jauge suit ce qui est réellement terminé.</p>
-          <div class="global-progress" id="globalProgress"></div>
-        </div>
+      <div class="section-head reveal">
+        <span class="section-num">03</span>
+        <h2 class="section-title">Mes <em>activités</em></h2>
+        <span class="section-rule" aria-hidden="true"></span>
+        <span class="section-meta" id="activitiesMeta"></span>
+      </div>
+
+      <div class="activities-intro">
+        <p class="lead">Chaque projet avance en trois temps : <span class="tag tag-done">Accompli</span> <span class="tag tag-doing">En cours</span> <span class="tag tag-todo">À exécuter</span>. La jauge suit ce qui est réellement terminé.</p>
+        <div class="global-progress" id="globalProgress"></div>
       </div>
 
       <div class="activities" id="activities"></div>
