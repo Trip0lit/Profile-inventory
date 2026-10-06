@@ -7,15 +7,13 @@
   <meta name="description" content="Galvez Martin — étudiant M2 au CEIPI, joueur d'échecs et de poker, bâtisseur de sites, d'agents autonomes, de mosaïques et de drones.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div class="grid-lines" aria-hidden="true"></div>
-
   <!-- HERO -->
   <header class="hero" id="top">
-    <canvas class="lava" id="lava" aria-hidden="true"></canvas>
+    <div class="hero-photo" role="img" aria-label="Décollage d'une fusée au coucher du soleil"></div>
     <div class="hero-shade" aria-hidden="true"></div>
 
     <nav class="nav">
@@ -33,6 +31,7 @@
     </div>
 
     <div class="hero-bottom">
+      <span class="hero-credit" data-edit="profile.heroCredit"></span>
       <a class="scroll-cue" href="#profil"><span class="section-num">01</span> Défiler pour découvrir <span class="arrow-down">↓</span></a>
       <div class="hero-lead">
         <p><strong data-edit="profile.leadStrong"></strong> <span data-edit="profile.lead"></span></p>
@@ -133,7 +132,6 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="js/data.js"></script>
-  <script src="js/lava.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
