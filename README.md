@@ -38,7 +38,7 @@ Les visiteurs voient le contenu de `js/data.js`. Pour publier ce que vous avez s
 
 ## Mise à jour en ligne (cache)
 
-Les liens vers `css/style.css`, `js/app.js`, `js/data.js` et la photo portent un numéro de version (`?v=7`).
+Les liens vers `css/style.css`, `js/app.js`, `js/data.js` et la photo portent un numéro de version (`?v=8`).
 Après avoir modifié un de ces fichiers, augmentez ce numéro dans `index.html`, `activite.html` (et `css/style.css` pour la photo)
 pour que les navigateurs des visiteurs rechargent la nouvelle version au lieu de l'ancienne gardée en cache.
 
