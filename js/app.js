@@ -250,16 +250,16 @@
       <p class="activity-desc" ${ce} data-field="desc">${esc(act.desc)}</p>`;
   }
 
-  // Carte de la page d'accueil : un clic ouvre la progression dans un nouvel onglet
+  // Carte de la page d'accueil : un clic ouvre la page de l'activité
   function activityHTML(act, i) {
     return `
       <article class="card activity reveal ${revealed.has(act.id) ? 'in' : ''}" data-activity="${act.id}" data-reveal="${act.id}">
-        <div class="activity-top" tabindex="0" role="link" aria-label="Ouvrir la progression de ${esc(act.title)} dans un nouvel onglet">
+        <div class="activity-top" tabindex="0" role="link" aria-label="Ouvrir la progression de ${esc(act.title)}">
           ${coverHTML(act, i)}
           <div class="card-body">
             ${infoHTML(act)}
             ${progressHTML(act)}
-            <a class="link-arrow activity-open" href="${detailURL(act)}" target="_blank" rel="noopener" tabindex="-1">Voir la progression <span>↗</span></a>
+            <a class="link-arrow activity-open" href="${detailURL(act)}" tabindex="-1">Voir la progression <span>→</span></a>
           </div>
         </div>
         ${editing ? `<div class="activity-admin">
@@ -417,7 +417,7 @@
   }
   function openDetail(node) {
     const act = state.activities.find(a => a.id === node.dataset.activity);
-    if (act) window.open(detailURL(act), '_blank', 'noopener');
+    if (act) location.href = detailURL(act);
   }
 
   activitiesRoot.addEventListener('keydown', e => {
@@ -712,10 +712,9 @@
     if (e.key === 'ArrowRight') step(1);
   });
 
-  /* ---------- Synchronisation entre onglets ---------- */
-  // Les modifications faites dans l'onglet d'une activité apparaissent en revenant sur l'accueil (et inversement)
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'visible') return;
+  /* ---------- Synchronisation ---------- */
+  // Les modifications faites sur la page d'une activité apparaissent en revenant sur l'accueil (bouton retour, autre onglet)
+  function reloadFromStore() {
     if (document.activeElement && document.activeElement.isContentEditable) return;
     store.get().then(saved => {
       if (saved && saved.profile && Array.isArray(saved.activities)) {
@@ -723,7 +722,9 @@
         renderAll();
       }
     });
-  });
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reloadFromStore(); });
+  window.addEventListener('pageshow', e => { if (e.persisted) reloadFromStore(); });
 
   /* ---------- Démarrage ---------- */
   $('#year').textContent = new Date().getFullYear();
