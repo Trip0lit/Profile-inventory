@@ -1,1 +1,44 @@
 # Profile-inventory
+
+Site personnel de Galvez Martin : présentation (CEIPI, échecs, poker, crypto) et suivi des activités en cours.
+Site 100 % statique (HTML/CSS/JS), sans dépendance ni étape de build.
+
+## Voir le site
+
+Ouvrir `index.html` dans un navigateur, ou servir le dossier :
+
+```bash
+python3 -m http.server 8000   # puis http://localhost:8000
+```
+
+## Modifier le contenu soi-même
+
+1. Cliquer sur **✎ Éditer** en bas de page (ou ajouter `#edit` à l'adresse).
+2. En mode édition :
+   - cliquer sur n'importe quel texte (nom, présentation, cartes, titres d'activités…) pour le modifier ;
+   - dans une activité, ouvrir **Détails** : ajouter une tâche dans **Accompli**, **En cours** ou **À exécuter** ;
+   - changer le statut d'une tâche avec les boutons ou en la **glissant** d'une colonne à l'autre ;
+   - **＋ Photo** ajoute une ou plusieurs photos à une tâche (redimensionnées automatiquement), cliquer dessus pour les agrandir ;
+   - ajouter, déplacer ou supprimer des activités.
+3. La barre de chargement de chaque activité se met à jour : partie pleine = accompli, partie hachurée = en cours.
+
+Les modifications sont enregistrées automatiquement **dans votre navigateur** (IndexedDB).
+
+## Publier les modifications
+
+Les visiteurs voient le contenu de `js/data.js`. Pour publier ce que vous avez saisi :
+
+1. Mode édition → **Exporter** : télécharge un nouveau `data.js` (photos incluses).
+2. Remplacer `js/data.js` par ce fichier, puis commit / push (ou ré-upload chez votre hébergeur).
+
+**Importer** recharge une sauvegarde `data.js`, **Réinitialiser** efface les modifications locales et revient à la version publiée.
+
+## Structure
+
+```
+index.html      page unique
+css/style.css   styles
+js/data.js      contenu publié (profil, activités, tâches, photos)
+js/app.js       rendu, mode édition, photos, sauvegarde
+js/lava.js      fond animé « coulée de lave » du hero
+```
