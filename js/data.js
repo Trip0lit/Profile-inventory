@@ -14,7 +14,7 @@ window.SITE_DATA = {
     "role": "Étudiant M2 · CEIPI",
     "tagline": "Juriste en propriété intellectuelle · Joueur · Bâtisseur",
     "intro": "Étudiant en M2 au CEIPI, je passe du droit des brevets aux lignes de code, d'une table de poker à un échiquier. Ce site est mon inventaire : ce que j'ai bouclé, ce qui avance, et ce qui reste à attaquer.",
-    "motto": "Calculer comme aux échecs, oser comme au poker, protéger comme un juriste.",
+    "motto": "Je préfère livrer que promettre.",
     "photo": "",
     "heroCredit": "Photo : SpaceX",
     "email": "contact@exemple.fr",

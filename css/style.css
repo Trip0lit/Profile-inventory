@@ -63,13 +63,13 @@ button, input { font: inherit; color: inherit; }
   position: absolute;
   inset: 0;
   z-index: -2;
-  background: url('../assets/hero.jpg') center 42% / cover no-repeat;
+  background: url('../assets/hero.jpg?v=8') center 42% / cover no-repeat;
   transform: scale(1.06);
   animation: liftoff 2.4s var(--ease) forwards;
 }
 @keyframes liftoff { to { transform: scale(1); } }
 @media (max-width: 700px) {
-  .hero-photo { background-image: url('../assets/hero-small.jpg'); background-position: 48% center; }
+  .hero-photo { background-image: url('../assets/hero-small.jpg?v=8'); background-position: 48% center; }
 }
 .hero-shade {
   position: absolute;

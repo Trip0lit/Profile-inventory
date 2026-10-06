@@ -51,6 +51,10 @@
     data.profile = Object.assign({}, clone(defaults), data.profile);
     if (!Array.isArray(data.profile.inventory)) data.profile.inventory = clone(defaults.inventory);
     delete data.profile.stats;
+    // Remplace les anciens textes par défaut encore présents dans une sauvegarde locale
+    if (data.profile.motto === 'Calculer comme aux échecs, oser comme au poker, protéger comme un juriste.') {
+      data.profile.motto = defaults.motto;
+    }
     return data;
   }
 
