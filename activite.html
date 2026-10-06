@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Activité — Galvez Martin</title>
+  <meta name="description" content="Galvez Martin — étudiant M2 au CEIPI, joueur d'échecs et de poker, bâtisseur de sites, d'agents autonomes, de mosaïques et de drones.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="activity">
+  <div class="grid-lines" aria-hidden="true"></div>
+
+  <nav class="nav page-nav">
+    <a class="logo" href="index.html"><span data-edit="profile.logo"></span><sup>®</sup></a>
+    <a class="back-link" href="index.html#activites">← Toutes les activités</a>
+  </nav>
+
+  <main class="section detail-section">
+    <div class="section-head">
+      <span class="section-num">03</span>
+      <span class="section-title-sm">Activités</span>
+      <span class="section-rule" aria-hidden="true"></span>
+      <span class="section-meta">Progression détaillée</span>
+    </div>
+    <div id="activities"></div>
+  </main>
+
+  <footer class="footer">
+    <span>© <span id="year"></span> <span data-edit="profile.name"></span></span>
+    <a href="#edit" class="edit-trigger" id="editTrigger" title="Mode édition">✎ Éditer</a>
+  </footer>
+
+  <!-- Barre d'édition -->
+  <div class="editbar" id="editbar" role="toolbar" aria-label="Outils d'édition">
+    <span class="editbar-title"><span class="dot"></span> Mode édition</span>
+    <span class="editbar-status" id="saveStatus">Enregistré</span>
+    <div class="editbar-actions">
+      <button class="btn btn-small" id="exportBtn" type="button" title="Télécharger data.js à placer dans le dossier js/ pour publier">Exporter</button>
+      <label class="btn btn-small" title="Recharger une sauvegarde (data.js ou .json)">Importer<input type="file" id="importInput" accept=".js,.json,application/json,text/javascript" hidden></label>
+      <button class="btn btn-small btn-danger" id="resetBtn" type="button" title="Effacer les modifications locales">Réinitialiser</button>
+      <button class="btn btn-small btn-solid" id="exitEdit" type="button">Terminer</button>
+    </div>
+  </div>
+
+  <!-- Visionneuse photo -->
+  <div class="lightbox" id="lightbox" hidden>
+    <button class="lightbox-close" type="button" aria-label="Fermer">×</button>
+    <button class="lightbox-nav prev" type="button" aria-label="Photo précédente">←</button>
+    <figure><img alt=""><figcaption></figcaption></figure>
+    <button class="lightbox-nav next" type="button" aria-label="Photo suivante">→</button>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

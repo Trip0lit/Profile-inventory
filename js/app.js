@@ -57,7 +57,6 @@
   let state = clone(window.SITE_DATA);
   let editing = false;
   const seenBars = new Set();
-  const openActivities = new Set();
   const revealed = new Set(); // évite de rejouer l'apparition à chaque re-rendu
 
   /* ---------- Sauvegarde ---------- */
@@ -134,6 +133,7 @@
       if (el === document.activeElement) return;
       el.textContent = getPath(el.dataset.edit) ?? '';
     });
+    if (!$('#mailLink')) return;
     const email = state.profile.email || '';
     $('#mailLink').href = 'mailto:' + email;
     const handle = (state.profile.twitter || '').replace(/^@/, '');
@@ -142,6 +142,7 @@
   }
 
   function renderTraits() {
+    if (!$('#traits')) return;
     $('#traits').innerHTML = state.profile.traits.map((t, i) => `
       <article class="trait reveal ${revealed.has('trait' + i) ? 'in' : ''}" data-reveal="trait${i}">
         <h3 data-edit="profile.traits.${i}.title">${esc(t.title)}</h3>
@@ -150,6 +151,7 @@
   }
 
   function renderAbout() {
+    if (!$('#portrait')) return;
     const p = state.profile;
     const c = counts(state.activities.flatMap(a => a.tasks));
     $('#portrait').innerHTML = `
@@ -176,6 +178,7 @@
   const initials = name => (name || '').split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase();
 
   function renderGlobal() {
+    if (!$('#globalProgress')) return;
     const c = counts(state.activities.flatMap(a => a.tasks));
     $('#globalProgress').innerHTML = `
       <div class="global-head"><span>Progression globale</span><strong>${pct(c.done, c.total)}%</strong></div>
@@ -208,10 +211,67 @@
       </li>`;
   }
 
-  function activityHTML(act, i) {
+  const detailURL = act => `activite.html?id=${encodeURIComponent(act.id)}${editing ? '#edit' : ''}`;
+
+  function coverHTML(act, i) {
+    const cover = act.cover || (act.tasks.find(t => t.photos && t.photos.length) || {}).photos?.[0];
+    const num = String(i + 1).padStart(2, '0');
+    const media = cover
+      ? `<img class="card-cover" src="${cover}" alt="" loading="lazy">`
+      : `<div class="card-placeholder" style="--hue:${(i * 23) % 60}"><span>${num}</span></div>`;
+    return `
+      <div class="card-media">
+        ${media}
+        ${editing ? `<div class="media-tools">
+          <label class="icon-btn on-media">${act.cover ? 'Changer la couverture' : '＋ Couverture'}<input type="file" accept="image/*" hidden data-action="set-cover"></label>
+          ${act.cover ? '<button type="button" class="icon-btn on-media danger" data-action="del-cover">Retirer</button>' : ''}
+        </div>` : ''}
+      </div>`;
+  }
+
+  function progressHTML(act) {
     const c = counts(act.tasks);
-    const isOpen = openActivities.has(act.id);
+    return `
+      <div class="activity-progress">
+        <div class="progress-row">${barHTML(c, act.id)}<span class="progress-num">${pct(c.done, c.total)}<small>%</small></span></div>
+        <div class="progress-legend">
+          <span><i class="dot-done"></i>${c.done} accomplie${c.done > 1 ? 's' : ''}</span>
+          <span><i class="dot-doing"></i>${c.doing} en cours</span>
+          <span><i class="dot-todo"></i>${c.todo} à exécuter</span>
+        </div>
+      </div>`;
+  }
+
+  function infoHTML(act, tag = 'h3') {
     const ce = editing ? 'contenteditable="plaintext-only" spellcheck="true"' : '';
+    return `
+      <span class="activity-tag" ${ce} data-field="tag">${esc(act.tag)}</span>
+      <${tag} class="activity-title" ${ce} data-field="title">${esc(act.title)}</${tag}>
+      <p class="activity-desc" ${ce} data-field="desc">${esc(act.desc)}</p>`;
+  }
+
+  // Carte de la page d'accueil : un clic ouvre la progression dans un nouvel onglet
+  function activityHTML(act, i) {
+    return `
+      <article class="card activity reveal ${revealed.has(act.id) ? 'in' : ''}" data-activity="${act.id}" data-reveal="${act.id}">
+        <div class="activity-top" tabindex="0" role="link" aria-label="Ouvrir la progression de ${esc(act.title)} dans un nouvel onglet">
+          ${coverHTML(act, i)}
+          <div class="card-body">
+            ${infoHTML(act)}
+            ${progressHTML(act)}
+            <a class="link-arrow activity-open" href="${detailURL(act)}" target="_blank" rel="noopener" tabindex="-1">Voir la progression <span>↗</span></a>
+          </div>
+        </div>
+        ${editing ? `<div class="activity-admin">
+          <button type="button" class="icon-btn" data-action="move-up" ${i === 0 ? 'disabled' : ''}>← Avancer</button>
+          <button type="button" class="icon-btn" data-action="move-down" ${i === state.activities.length - 1 ? 'disabled' : ''}>Reculer →</button>
+          <button type="button" class="icon-btn danger" data-action="del-activity">Supprimer</button>
+        </div>` : ''}
+      </article>`;
+  }
+
+  // Page dédiée (activite.html) : en-tête + trois colonnes de tâches
+  function detailHTML(act, i) {
     const columns = STATUSES.map(s => {
       const tasks = act.tasks.filter(t => t.status === s.key);
       return `
@@ -224,57 +284,37 @@
           </form>` : ''}
         </div>`;
     }).join('');
-
-    const cover = act.cover || (act.tasks.find(t => t.photos && t.photos.length) || {}).photos?.[0];
-    const num = String(i + 1).padStart(2, '0');
-    const media = cover
-      ? `<img class="card-cover" src="${cover}" alt="" loading="lazy">`
-      : `<div class="card-placeholder" style="--hue:${(i * 23) % 60}"><span>${num}</span></div>`;
-
     return `
-      <article class="card activity reveal ${revealed.has(act.id) ? 'in' : ''} ${isOpen ? 'open' : ''}" data-activity="${act.id}" data-reveal="${act.id}">
-        <div class="activity-top" tabindex="0" role="button" aria-label="Afficher la progression de ${esc(act.title)}">
-          <div class="card-media">
-            ${media}
-            <span class="card-num">${num}</span>
-            ${editing ? `<div class="media-tools">
-              <label class="icon-btn on-media">${act.cover ? 'Changer la couverture' : '＋ Couverture'}<input type="file" accept="image/*" hidden data-action="set-cover"></label>
-              ${act.cover ? '<button type="button" class="icon-btn on-media danger" data-action="del-cover">Retirer</button>' : ''}
-            </div>` : ''}
-          </div>
+      <article class="activity-detail" data-activity="${act.id}">
+        <div class="card detail-head">
+          ${coverHTML(act, i)}
           <div class="card-body">
-            <span class="activity-tag" ${ce} data-field="tag">${esc(act.tag)}</span>
-            <h3 class="activity-title" ${ce} data-field="title">${esc(act.title)}</h3>
-            <p class="activity-desc" ${ce} data-field="desc">${esc(act.desc)}</p>
-            <div class="activity-progress">
-              <div class="progress-row">${barHTML(c, act.id)}<span class="progress-num">${pct(c.done, c.total)}<small>%</small></span></div>
-              <div class="progress-legend">
-                <span><i class="dot-done"></i>${c.done} accomplie${c.done > 1 ? 's' : ''}</span>
-                <span><i class="dot-doing"></i>${c.doing} en cours</span>
-                <span><i class="dot-todo"></i>${c.todo} à exécuter</span>
-              </div>
-            </div>
-            <button type="button" class="link-arrow activity-toggle" data-action="toggle" aria-expanded="${isOpen}" tabindex="-1">
-              <span class="toggle-label">${isOpen ? 'Masquer la progression' : 'Voir la progression'}</span><span class="toggle-icon">↓</span>
-            </button>
+            <span class="eyebrow">Activité ${String(i + 1).padStart(2, '0')} / ${String(state.activities.length).padStart(2, '0')}</span>
+            ${infoHTML(act, 'h1')}
+            ${progressHTML(act)}
           </div>
         </div>
-        <div class="activity-body">
-          <div class="activity-body-inner">
-            <div class="columns">${columns}</div>
-            ${editing ? `<div class="activity-admin">
-              <button type="button" class="icon-btn" data-action="move-up" ${i === 0 ? 'disabled' : ''}>← Avancer</button>
-              <button type="button" class="icon-btn" data-action="move-down" ${i === state.activities.length - 1 ? 'disabled' : ''}>Reculer →</button>
-              <button type="button" class="icon-btn danger" data-action="del-activity">Supprimer l'activité</button>
-            </div>` : ''}
-          </div>
-        </div>
+        <div class="columns">${columns}</div>
       </article>`;
   }
 
+  const PAGE = document.body.dataset.page || 'home';
+  const detailId = new URLSearchParams(location.search).get('id');
+
   function renderActivities() {
     const root = $('#activities');
-    root.innerHTML = state.activities.map(activityHTML).join('');
+    if (PAGE === 'activity') {
+      const i = state.activities.findIndex(a => a.id === detailId);
+      if (i < 0) {
+        root.innerHTML = `<div class="card detail-missing"><h1 class="activity-title">Activité introuvable</h1><p class="activity-desc">Elle a peut-être été supprimée.</p><a class="link-arrow" href="index.html#activites">Retour aux activités <span>→</span></a></div>`;
+        document.title = 'Activité introuvable';
+        return;
+      }
+      root.innerHTML = detailHTML(state.activities[i], i);
+      document.title = `${state.activities[i].title} — ${state.profile.name}`;
+    } else {
+      root.innerHTML = state.activities.map(activityHTML).join('');
+    }
     watchBars(root);
     observeReveal(root);
   }
@@ -289,7 +329,7 @@
     observeReveal(document);
   }
 
-  // Rafraîchit les éléments dépendant des tâches sans perdre l'état d'ouverture
+  // Rafraîchit les éléments dépendant des tâches
   function refreshProgress() {
     renderAbout();
     renderGlobal();
@@ -370,33 +410,26 @@
   /* ---------- Événements : activités ---------- */
   const activitiesRoot = $('#activities');
 
-  function toggleActivity(node) {
-    const open = !node.classList.contains('open');
-    const btn = $('.activity-toggle', node);
-    node.classList.toggle('open', open);
-    btn.setAttribute('aria-expanded', open);
-    $('.toggle-label', btn).textContent = open ? 'Masquer la progression' : 'Voir la progression';
-    open ? openActivities.add(node.dataset.activity) : openActivities.delete(node.dataset.activity);
-    if (open) setTimeout(() => node.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
-  }
-
   // Un clic n'importe où sur la carte (hors champs et boutons d'édition) ouvre la progression
-  function isCardToggleClick(target) {
-    if (!target.closest('.activity-top')) return false;
-    if (target.closest('[data-action="toggle"]')) return true;
+  function isCardOpenClick(target) {
+    if (PAGE !== 'home' || !target.closest('.activity-top')) return false;
     return !target.closest('[contenteditable], [data-action], label, input, button, a');
+  }
+  function openDetail(node) {
+    const act = state.activities.find(a => a.id === node.dataset.activity);
+    if (act) window.open(detailURL(act), '_blank', 'noopener');
   }
 
   activitiesRoot.addEventListener('keydown', e => {
     if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('activity-top')) {
       e.preventDefault();
-      toggleActivity(e.target.closest('.activity'));
+      openDetail(e.target.closest('.activity'));
     }
   });
 
   activitiesRoot.addEventListener('click', e => {
-    if (isCardToggleClick(e.target)) {
-      toggleActivity(e.target.closest('.activity'));
+    if (isCardOpenClick(e.target)) {
+      openDetail(e.target.closest('.activity'));
       return;
     }
     const btn = e.target.closest('[data-action]');
@@ -421,6 +454,7 @@
     } else if (action === 'del-activity') {
       if (!confirm(`Supprimer l'activité « ${act.title} » et toutes ses tâches ?`)) return;
       state.activities = state.activities.filter(a => a !== act);
+      if (PAGE === 'activity') { save(); location.href = 'index.html#activites'; return; }
     } else if (action === 'move-up' || action === 'move-down') {
       const i = state.activities.indexOf(act);
       const j = action === 'move-up' ? i - 1 : i + 1;
@@ -561,48 +595,49 @@
   }
 
   /* ---------- Événements : carte « À propos » ---------- */
-  $('#portrait').addEventListener('change', async e => {
-    const input = e.target;
-    if (input.dataset.action !== 'set-portrait' || !input.files.length) return;
-    try {
-      state.profile.photo = await compressImage(input.files[0], 1000);
+  if (PAGE === 'home') {
+    $('#portrait').addEventListener('change', async e => {
+      const input = e.target;
+      if (input.dataset.action !== 'set-portrait' || !input.files.length) return;
+      try {
+        state.profile.photo = await compressImage(input.files[0], 1000);
+        save();
+        renderAbout();
+      } catch (err) { toast('Impossible de lire cette image'); }
+    });
+    $('#portrait').addEventListener('click', e => {
+      if (!editing || !e.target.closest('[data-action="del-portrait"]')) return;
+      state.profile.photo = '';
       save();
       renderAbout();
-    } catch (err) { toast('Impossible de lire cette image'); }
-  });
-  $('#portrait').addEventListener('click', e => {
-    if (!editing || !e.target.closest('[data-action="del-portrait"]')) return;
-    state.profile.photo = '';
-    save();
-    renderAbout();
-  });
-  $('#inventory').addEventListener('click', e => {
-    const btn = e.target.closest('[data-action="del-inventory"]');
-    if (!editing || !btn) return;
-    state.profile.inventory.splice(+btn.dataset.index, 1);
-    save();
-    renderAbout();
-    setEditableBindings();
-  });
-  $('#addInventory').addEventListener('click', () => {
-    state.profile.inventory.push({ label: 'Intitulé', value: 'Valeur' });
-    save();
-    renderAbout();
-    setEditableBindings();
-    const rows = $$('#inventory [data-edit$=".label"]');
-    selectContents(rows[rows.length - 1]);
-  });
+    });
+    $('#inventory').addEventListener('click', e => {
+      const btn = e.target.closest('[data-action="del-inventory"]');
+      if (!editing || !btn) return;
+      state.profile.inventory.splice(+btn.dataset.index, 1);
+      save();
+      renderAbout();
+      setEditableBindings();
+    });
+    $('#addInventory').addEventListener('click', () => {
+      state.profile.inventory.push({ label: 'Intitulé', value: 'Valeur' });
+      save();
+      renderAbout();
+      setEditableBindings();
+      const rows = $$('#inventory [data-edit$=".label"]');
+      selectContents(rows[rows.length - 1]);
+    });
 
-  $('#addActivity').addEventListener('click', () => {
-    const act = { id: uid(), title: 'Nouvelle activité', tag: 'Projet', desc: 'Décrivez ce projet en une phrase.', tasks: [] };
-    state.activities.push(act);
-    openActivities.add(act.id);
-    save();
-    refreshProgress();
-    const title = $(`[data-activity="${act.id}"] .activity-title`);
-    title.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    selectContents(title);
-  });
+    $('#addActivity').addEventListener('click', () => {
+      const act = { id: uid(), title: 'Nouvelle activité', tag: 'Projet', desc: 'Décrivez ce projet en une phrase.', tasks: [] };
+      state.activities.push(act);
+      save();
+      refreshProgress();
+      const title = $(`[data-activity="${act.id}"] .activity-title`);
+      title.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      selectContents(title);
+    });
+  }
 
   /* ---------- Barre d'édition ---------- */
   $('#editTrigger').addEventListener('click', e => { e.preventDefault(); setEditing(true); });
@@ -675,6 +710,19 @@
     if (e.key === 'Escape') closeLightbox();
     if (e.key === 'ArrowLeft') step(-1);
     if (e.key === 'ArrowRight') step(1);
+  });
+
+  /* ---------- Synchronisation entre onglets ---------- */
+  // Les modifications faites dans l'onglet d'une activité apparaissent en revenant sur l'accueil (et inversement)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    if (document.activeElement && document.activeElement.isContentEditable) return;
+    store.get().then(saved => {
+      if (saved && saved.profile && Array.isArray(saved.activities)) {
+        state = normalize(saved);
+        renderAll();
+      }
+    });
   });
 
   /* ---------- Démarrage ---------- */
