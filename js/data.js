@@ -11,7 +11,11 @@ window.SITE_DATA = {
     "badge": "M2 au CEIPI · Propriété intellectuelle",
     "leadStrong": "Juriste en propriété intellectuelle le jour, bâtisseur le reste du temps",
     "lead": "— sites web, agents autonomes, mosaïque et drones. Je construis, je mesure, j'itère.",
+    "role": "Étudiant M2 · CEIPI",
+    "tagline": "Juriste en propriété intellectuelle · Joueur · Bâtisseur",
     "intro": "Étudiant en M2 au CEIPI, je passe du droit des brevets aux lignes de code, d'une table de poker à un échiquier. Ce site est mon inventaire : ce que j'ai bouclé, ce qui avance, et ce qui reste à attaquer.",
+    "motto": "Calculer comme aux échecs, oser comme au poker, protéger comme un juriste.",
+    "photo": "",
     "email": "contact@exemple.fr",
     "twitter": "@moncompte",
     "traits": [
@@ -32,10 +36,11 @@ window.SITE_DATA = {
         "text": "Des bull runs aux hivers crypto : une formation accélérée au risque, à la tech et à la psychologie des marchés."
       }
     ],
-    "stats": [
-      { "value": "M2", "label": "CEIPI" },
-      { "value": "1500", "label": "Elo (pic)" },
-      { "value": "♠", "label": "Joueur de poker" }
+    "inventory": [
+      { "label": "Formation", "value": "M2 · CEIPI" },
+      { "label": "Échecs", "value": "1500 Elo (pic)" },
+      { "label": "Poker", "value": "Joueur" },
+      { "label": "Crypto", "value": "Ancien cryptobro" }
     ]
   },
   "activities": [

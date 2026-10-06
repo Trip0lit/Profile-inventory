@@ -45,6 +45,15 @@
     };
   })();
 
+  // Complète un état sauvegardé avec les champs ajoutés depuis (ex. inventaire, devise)
+  function normalize(data) {
+    const defaults = window.SITE_DATA.profile;
+    data.profile = Object.assign({}, clone(defaults), data.profile);
+    if (!Array.isArray(data.profile.inventory)) data.profile.inventory = clone(defaults.inventory);
+    delete data.profile.stats;
+    return data;
+  }
+
   let state = clone(window.SITE_DATA);
   let editing = false;
   const seenBars = new Set();
@@ -140,15 +149,31 @@
       </article>`).join('');
   }
 
-  function renderStats() {
-    const all = state.activities.flatMap(a => a.tasks);
-    const c = counts(all);
-    const custom = state.profile.stats.map((s, i) => `
-      <div class="stat"><dt data-edit="profile.stats.${i}.value">${esc(s.value)}</dt><dd data-edit="profile.stats.${i}.label">${esc(s.label)}</dd></div>`).join('');
-    $('#stats').innerHTML = custom + `
-      <div class="stat"><dt>${state.activities.length}</dt><dd>Projets suivis</dd></div>
-      <div class="stat"><dt>${c.done}<small>/${c.total}</small></dt><dd>Tâches accomplies</dd></div>`;
+  function renderAbout() {
+    const p = state.profile;
+    const c = counts(state.activities.flatMap(a => a.tasks));
+    $('#portrait').innerHTML = `
+      ${p.photo
+        ? `<img class="portrait-img" src="${p.photo}" alt="Portrait de ${esc(p.name)}">`
+        : `<div class="portrait-placeholder" aria-hidden="true"><span>${esc(initials(p.name))}</span></div>`}
+      ${editing ? `<div class="portrait-tools">
+        <label class="icon-btn">${p.photo ? 'Changer la photo' : '＋ Ajouter ma photo'}<input type="file" accept="image/*" hidden data-action="set-portrait"></label>
+        ${p.photo ? '<button type="button" class="icon-btn danger" data-action="del-portrait">Retirer</button>' : ''}
+      </div>` : ''}`;
+    $('#aboutLevel').innerHTML = `<span>Progression</span> <strong>${pct(c.done, c.total)}%</strong>`;
+    $('#inventory').innerHTML = p.inventory.map((row, i) => `
+      <div class="inv-row">
+        <dt data-edit="profile.inventory.${i}.label">${esc(row.label)}</dt>
+        <dd data-edit="profile.inventory.${i}.value">${esc(row.value)}</dd>
+        ${editing ? `<button type="button" class="inv-del" data-action="del-inventory" data-index="${i}" aria-label="Supprimer la ligne">×</button>` : ''}
+      </div>`).join('') + `
+      <div class="inv-row"><dt>Projets suivis</dt><dd>${state.activities.length}</dd></div>
+      <div class="inv-row"><dt>Tâches accomplies</dt><dd>${c.done} / ${c.total}</dd></div>`;
+    $('#activitiesMeta').textContent = `${state.activities.length} projets · ${pct(c.done, c.total)} % accompli`;
+    setEditableBindings();
   }
+
+  const initials = name => (name || '').split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase();
 
   function renderGlobal() {
     const c = counts(state.activities.flatMap(a => a.tasks));
@@ -200,34 +225,46 @@
         </div>`;
     }).join('');
 
+    const cover = act.cover || (act.tasks.find(t => t.photos && t.photos.length) || {}).photos?.[0];
+    const num = String(i + 1).padStart(2, '0');
+    const media = cover
+      ? `<img class="card-cover" src="${cover}" alt="" loading="lazy">`
+      : `<div class="card-placeholder" style="--hue:${(i * 23) % 60}"><span>${num}</span></div>`;
+
     return `
-      <article class="activity reveal ${revealed.has(act.id) ? 'in' : ''} ${isOpen ? 'open' : ''}" data-activity="${act.id}" data-reveal="${act.id}">
-        <div class="activity-head">
-          <span class="activity-index">${String(i + 1).padStart(2, '0')}</span>
-          <div class="activity-info">
+      <article class="card activity reveal ${revealed.has(act.id) ? 'in' : ''} ${isOpen ? 'open' : ''}" data-activity="${act.id}" data-reveal="${act.id}">
+        <div class="activity-top">
+          <div class="card-media">
+            ${media}
+            <span class="card-num">${num}</span>
+            ${editing ? `<div class="media-tools">
+              <label class="icon-btn on-media">${act.cover ? 'Changer la couverture' : '＋ Couverture'}<input type="file" accept="image/*" hidden data-action="set-cover"></label>
+              ${act.cover ? '<button type="button" class="icon-btn on-media danger" data-action="del-cover">Retirer</button>' : ''}
+            </div>` : ''}
+          </div>
+          <div class="card-body">
             <span class="activity-tag" ${ce} data-field="tag">${esc(act.tag)}</span>
             <h3 class="activity-title" ${ce} data-field="title">${esc(act.title)}</h3>
             <p class="activity-desc" ${ce} data-field="desc">${esc(act.desc)}</p>
-          </div>
-          <div class="activity-progress">
-            <div class="progress-num"><strong>${pct(c.done, c.total)}</strong><span>%</span></div>
-            ${barHTML(c, act.id)}
-            <div class="progress-legend">
-              <span><i class="dot-done"></i>${c.done} accomplie${c.done > 1 ? 's' : ''}</span>
-              <span><i class="dot-doing"></i>${c.doing} en cours</span>
-              <span><i class="dot-todo"></i>${c.todo} à exécuter</span>
+            <div class="activity-progress">
+              <div class="progress-row">${barHTML(c, act.id)}<span class="progress-num">${pct(c.done, c.total)}<small>%</small></span></div>
+              <div class="progress-legend">
+                <span><i class="dot-done"></i>${c.done} accomplie${c.done > 1 ? 's' : ''}</span>
+                <span><i class="dot-doing"></i>${c.doing} en cours</span>
+                <span><i class="dot-todo"></i>${c.todo} à exécuter</span>
+              </div>
             </div>
+            <button type="button" class="link-arrow activity-toggle" data-action="toggle" aria-expanded="${isOpen}">
+              <span class="toggle-label">${isOpen ? 'Masquer le détail' : 'Voir le détail'}</span><span class="toggle-icon">↓</span>
+            </button>
           </div>
-          <button type="button" class="activity-toggle" data-action="toggle" aria-expanded="${isOpen}">
-            <span class="toggle-label">${isOpen ? 'Réduire' : 'Détails'}</span><span class="toggle-icon">+</span>
-          </button>
         </div>
         <div class="activity-body">
           <div class="activity-body-inner">
             <div class="columns">${columns}</div>
             ${editing ? `<div class="activity-admin">
-              <button type="button" class="icon-btn" data-action="move-up" ${i === 0 ? 'disabled' : ''}>↑ Monter</button>
-              <button type="button" class="icon-btn" data-action="move-down" ${i === state.activities.length - 1 ? 'disabled' : ''}>↓ Descendre</button>
+              <button type="button" class="icon-btn" data-action="move-up" ${i === 0 ? 'disabled' : ''}>← Avancer</button>
+              <button type="button" class="icon-btn" data-action="move-down" ${i === state.activities.length - 1 ? 'disabled' : ''}>Reculer →</button>
               <button type="button" class="icon-btn danger" data-action="del-activity">Supprimer l'activité</button>
             </div>` : ''}
           </div>
@@ -245,7 +282,7 @@
   function renderAll() {
     renderTraits();
     renderBindings();
-    renderStats();
+    renderAbout();
     renderGlobal();
     renderActivities();
     setEditableBindings();
@@ -254,7 +291,7 @@
 
   // Rafraîchit les éléments dépendant des tâches sans perdre l'état d'ouverture
   function refreshProgress() {
-    renderStats();
+    renderAbout();
     renderGlobal();
     renderActivities();
     setEditableBindings();
@@ -346,8 +383,9 @@
       const open = !node.classList.contains('open');
       node.classList.toggle('open', open);
       btn.setAttribute('aria-expanded', open);
-      $('.toggle-label', btn).textContent = open ? 'Réduire' : 'Détails';
+      $('.toggle-label', btn).textContent = open ? 'Masquer le détail' : 'Voir le détail';
       open ? openActivities.add(act.id) : openActivities.delete(act.id);
+      if (open) setTimeout(() => node.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
       return;
     }
     if (action === 'open-photo') {
@@ -358,6 +396,7 @@
 
     if (action === 'set-status') setStatus(task, btn.dataset.status);
     else if (action === 'del-photo') task.photos.splice(+btn.dataset.index, 1);
+    else if (action === 'del-cover') delete act.cover;
     else if (action === 'del-task') {
       if (!confirm('Supprimer cette tâche ?')) return;
       act.tasks = act.tasks.filter(t => t !== task);
@@ -394,6 +433,15 @@
 
   activitiesRoot.addEventListener('change', async e => {
     const input = e.target;
+    if (input.dataset.action === 'set-cover' && input.files.length) {
+      const act = findActivity(input);
+      try {
+        act.cover = await compressImage(input.files[0], 1600);
+        save();
+        refreshProgress();
+      } catch (err) { toast('Impossible de lire cette image'); }
+      return;
+    }
     if (input.dataset.action !== 'add-photo' || !input.files.length) return;
     const act = findActivity(input);
     const task = findTask(act, input);
@@ -484,6 +532,49 @@
     renderBindings();
   }, true);
 
+  // Place le focus sur un champ éditable et sélectionne son texte provisoire
+  function selectContents(el) {
+    el.focus();
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  /* ---------- Événements : carte « À propos » ---------- */
+  $('#portrait').addEventListener('change', async e => {
+    const input = e.target;
+    if (input.dataset.action !== 'set-portrait' || !input.files.length) return;
+    try {
+      state.profile.photo = await compressImage(input.files[0], 1000);
+      save();
+      renderAbout();
+    } catch (err) { toast('Impossible de lire cette image'); }
+  });
+  $('#portrait').addEventListener('click', e => {
+    if (!editing || !e.target.closest('[data-action="del-portrait"]')) return;
+    state.profile.photo = '';
+    save();
+    renderAbout();
+  });
+  $('#inventory').addEventListener('click', e => {
+    const btn = e.target.closest('[data-action="del-inventory"]');
+    if (!editing || !btn) return;
+    state.profile.inventory.splice(+btn.dataset.index, 1);
+    save();
+    renderAbout();
+    setEditableBindings();
+  });
+  $('#addInventory').addEventListener('click', () => {
+    state.profile.inventory.push({ label: 'Intitulé', value: 'Valeur' });
+    save();
+    renderAbout();
+    setEditableBindings();
+    const rows = $$('#inventory [data-edit$=".label"]');
+    selectContents(rows[rows.length - 1]);
+  });
+
   $('#addActivity').addEventListener('click', () => {
     const act = { id: uid(), title: 'Nouvelle activité', tag: 'Projet', desc: 'Décrivez ce projet en une phrase.', tasks: [] };
     state.activities.push(act);
@@ -492,8 +583,7 @@
     refreshProgress();
     const title = $(`[data-activity="${act.id}"] .activity-title`);
     title.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    title.focus();
-    document.execCommand && document.execCommand('selectAll', false, null);
+    selectContents(title);
   });
 
   /* ---------- Barre d'édition ---------- */
@@ -523,7 +613,7 @@
       const json = text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
       const data = JSON.parse(json);
       if (!data.profile || !Array.isArray(data.activities)) throw new Error('format');
-      state = data;
+      state = normalize(data);
       save();
       renderAll();
       toast('Sauvegarde importée');
@@ -574,7 +664,7 @@
   renderAll();
   store.get().then(saved => {
     if (saved && saved.profile && Array.isArray(saved.activities)) {
-      state = saved;
+      state = normalize(saved);
       renderAll();
     }
     if (location.hash === '#edit') setEditing(true);
