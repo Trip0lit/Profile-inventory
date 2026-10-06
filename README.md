@@ -29,16 +29,18 @@ Les modifications sont enregistrées automatiquement **dans votre navigateur** (
 
 ## Publier les modifications
 
-Les visiteurs voient le contenu de `js/data.js`. Pour publier ce que vous avez saisi :
+Les modifications (textes, tâches, **photos**) sont d'abord enregistrées **uniquement sur l'appareil** utilisé.
+Elles ne sont visibles ailleurs (téléphone, visiteurs) qu'une fois publiées. Le bouton **Publier** devient orange quand il reste des modifications à mettre en ligne :
 
-1. Mode édition → **Exporter** : télécharge un nouveau `data.js` (photos incluses).
-2. Remplacer `js/data.js` par ce fichier, puis commit / push (ou ré-upload chez votre hébergeur).
+1. Mode édition → **Publier** : télécharge un nouveau `data.js` (photos incluses) et affiche les étapes.
+2. Sur la page d'envoi GitHub (`js/`), glisser `data.js` puis « Commit changes ».
+3. Après 1 à 2 minutes, le site en ligne est à jour (le site recharge toujours `js/data.js` sans cache).
 
 **Importer** recharge une sauvegarde `data.js`, **Réinitialiser** efface les modifications locales et revient à la version publiée.
 
 ## Mise à jour en ligne (cache)
 
-Les liens vers `css/style.css`, `js/app.js`, `js/data.js` et la photo portent un numéro de version (`?v=8`).
+Les liens vers `css/style.css`, `js/app.js`, `js/data.js` et la photo portent un numéro de version (`?v=9`).
 Après avoir modifié un de ces fichiers, augmentez ce numéro dans `index.html`, `activite.html` (et `css/style.css` pour la photo)
 pour que les navigateurs des visiteurs rechargent la nouvelle version au lieu de l'ancienne gardée en cache.
 
