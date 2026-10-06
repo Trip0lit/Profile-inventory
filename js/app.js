@@ -1,0 +1,582 @@
+/* Galvez Martin — portfolio éditable (sans dépendance). */
+(function () {
+  'use strict';
+
+  const STATUSES = [
+    { key: 'done', label: 'Accompli' },
+    { key: 'doing', label: 'En cours' },
+    { key: 'todo', label: 'À exécuter' }
+  ];
+  const STATUS_LABEL = Object.fromEntries(STATUSES.map(s => [s.key, s.label]));
+
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+  const uid = () => Math.random().toString(36).slice(2, 10);
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  /* ---------- Stockage local (IndexedDB, les photos dépassent vite localStorage) ---------- */
+  const store = (() => {
+    const DB = 'galvez-martin-site', OS = 'kv', KEY = 'state';
+    let dbp = null;
+    function open() {
+      if (!dbp) {
+        dbp = new Promise((res, rej) => {
+          const r = indexedDB.open(DB, 1);
+          r.onupgradeneeded = () => r.result.createObjectStore(OS);
+          r.onsuccess = () => res(r.result);
+          r.onerror = () => rej(r.error);
+        });
+      }
+      return dbp;
+    }
+    function tx(mode, fn) {
+      return open().then(db => new Promise((res, rej) => {
+        const t = db.transaction(OS, mode);
+        const req = fn(t.objectStore(OS));
+        t.oncomplete = () => res(req && req.result);
+        t.onerror = () => rej(t.error);
+      }));
+    }
+    return {
+      get: () => tx('readonly', s => s.get(KEY)).catch(() => null),
+      set: v => tx('readwrite', s => s.put(v, KEY)),
+      clear: () => tx('readwrite', s => s.delete(KEY))
+    };
+  })();
+
+  let state = clone(window.SITE_DATA);
+  let editing = false;
+  const seenBars = new Set();
+  const openActivities = new Set();
+  const revealed = new Set(); // évite de rejouer l'apparition à chaque re-rendu
+
+  /* ---------- Sauvegarde ---------- */
+  let saveTimer = null;
+  function save() {
+    const status = $('#saveStatus');
+    status.textContent = 'Enregistrement…';
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      store.set(state)
+        .then(() => { status.textContent = 'Enregistré'; })
+        .catch(() => { status.textContent = 'Échec de l\'enregistrement'; toast('Stockage local plein ou indisponible'); });
+    }, 300);
+  }
+
+  function toast(msg) {
+    const t = $('#toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => t.classList.remove('show'), 2600);
+  }
+
+  /* ---------- Chemins type "profile.traits.0.title" ---------- */
+  function getPath(path) {
+    return path.split('.').reduce((o, k) => (o == null ? o : o[k]), state);
+  }
+  function setPath(path, value) {
+    const keys = path.split('.');
+    const last = keys.pop();
+    const target = keys.reduce((o, k) => o[k], state);
+    target[last] = value;
+  }
+
+  /* ---------- Progression ---------- */
+  function counts(tasks) {
+    const c = { done: 0, doing: 0, todo: 0, total: tasks.length };
+    tasks.forEach(t => { c[t.status] = (c[t.status] || 0) + 1; });
+    return c;
+  }
+  const pct = (n, total) => (total ? Math.round((n / total) * 100) : 0);
+
+  function barHTML(c, key) {
+    const done = pct(c.done, c.total), doing = pct(c.doing, c.total);
+    const animate = !seenBars.has(key);
+    return `<div class="bar" data-bar="${esc(key)}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${done}" aria-label="Progression">
+      <span class="bar-done" style="width:${animate ? 0 : done}%" data-w="${done}"></span><span class="bar-doing" style="width:${animate ? 0 : doing}%" data-w="${doing}"></span>
+    </div>`;
+  }
+
+  const barObserver = 'IntersectionObserver' in window ? new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      fillBar(e.target);
+      barObserver.unobserve(e.target);
+    });
+  }, { threshold: 0.4 }) : null;
+
+  function fillBar(bar) {
+    seenBars.add(bar.dataset.bar);
+    $$('[data-w]', bar).forEach(s => { s.style.width = s.dataset.w + '%'; });
+  }
+  function watchBars(root) {
+    $$('.bar', root).forEach(bar => {
+      if (seenBars.has(bar.dataset.bar)) return;
+      if (barObserver) barObserver.observe(bar);
+      else fillBar(bar);
+    });
+  }
+
+  /* ---------- Rendu : profil ---------- */
+  function renderBindings() {
+    $$('[data-edit]').forEach(el => {
+      if (el === document.activeElement) return;
+      el.textContent = getPath(el.dataset.edit) ?? '';
+    });
+    const email = state.profile.email || '';
+    $('#mailLink').href = 'mailto:' + email;
+    const handle = (state.profile.twitter || '').replace(/^@/, '');
+    $('#twitterLink').href = 'https://x.com/' + encodeURIComponent(handle);
+    document.title = state.profile.name || 'Portfolio';
+  }
+
+  function renderTraits() {
+    $('#traits').innerHTML = state.profile.traits.map((t, i) => `
+      <article class="trait reveal ${revealed.has('trait' + i) ? 'in' : ''}" data-reveal="trait${i}">
+        <h3 data-edit="profile.traits.${i}.title">${esc(t.title)}</h3>
+        <p data-edit="profile.traits.${i}.text">${esc(t.text)}</p>
+      </article>`).join('');
+  }
+
+  function renderStats() {
+    const all = state.activities.flatMap(a => a.tasks);
+    const c = counts(all);
+    const custom = state.profile.stats.map((s, i) => `
+      <div class="stat"><dt data-edit="profile.stats.${i}.value">${esc(s.value)}</dt><dd data-edit="profile.stats.${i}.label">${esc(s.label)}</dd></div>`).join('');
+    $('#stats').innerHTML = custom + `
+      <div class="stat"><dt>${state.activities.length}</dt><dd>Projets suivis</dd></div>
+      <div class="stat"><dt>${c.done}<small>/${c.total}</small></dt><dd>Tâches accomplies</dd></div>`;
+  }
+
+  function renderGlobal() {
+    const c = counts(state.activities.flatMap(a => a.tasks));
+    $('#globalProgress').innerHTML = `
+      <div class="global-head"><span>Progression globale</span><strong>${pct(c.done, c.total)}%</strong></div>
+      ${barHTML(c, 'global')}`;
+    watchBars($('#globalProgress'));
+  }
+
+  /* ---------- Rendu : activités ---------- */
+  function taskHTML(act, task) {
+    const photos = (task.photos || []).map((src, i) => `
+      <div class="thumb">
+        <button type="button" class="thumb-open" data-action="open-photo" data-index="${i}" aria-label="Agrandir la photo"><img src="${src}" alt="" loading="lazy"></button>
+        ${editing ? `<button type="button" class="thumb-del" data-action="del-photo" data-index="${i}" aria-label="Supprimer la photo">×</button>` : ''}
+      </div>`).join('');
+    const date = task.date ? `<time class="task-date">${esc(task.date)}</time>` : '';
+    const tools = editing ? `
+      <div class="task-tools">
+        <div class="seg" role="group" aria-label="Statut">
+          ${STATUSES.map(s => `<button type="button" class="seg-btn ${task.status === s.key ? 'on' : ''} s-${s.key}" data-action="set-status" data-status="${s.key}" title="${s.label}">${s.label}</button>`).join('')}
+        </div>
+        <label class="icon-btn" title="Ajouter des photos">＋ Photo<input type="file" accept="image/*" multiple hidden data-action="add-photo"></label>
+        <button type="button" class="icon-btn danger" data-action="del-task" title="Supprimer la tâche">Supprimer</button>
+      </div>` : '';
+    return `
+      <li class="task s-${task.status}" data-task="${task.id}" ${editing ? 'draggable="true"' : ''}>
+        <p class="task-text" ${editing ? 'contenteditable="plaintext-only" spellcheck="true" data-field="text"' : ''}>${esc(task.text)}</p>
+        ${date}
+        ${photos ? `<div class="task-photos">${photos}</div>` : ''}
+        ${tools}
+      </li>`;
+  }
+
+  function activityHTML(act, i) {
+    const c = counts(act.tasks);
+    const isOpen = openActivities.has(act.id);
+    const ce = editing ? 'contenteditable="plaintext-only" spellcheck="true"' : '';
+    const columns = STATUSES.map(s => {
+      const tasks = act.tasks.filter(t => t.status === s.key);
+      return `
+        <div class="col col-${s.key}" data-status="${s.key}">
+          <div class="col-head"><span class="tag tag-${s.key}">${s.label}</span><span class="col-count">${tasks.length}</span></div>
+          <ul class="task-list">${tasks.map(t => taskHTML(act, t)).join('') || `<li class="empty">${editing ? 'Glissez une tâche ici' : 'Rien pour le moment'}</li>`}</ul>
+          ${editing ? `<form class="add-task" data-action="add-task" data-status="${s.key}">
+            <input type="text" name="text" placeholder="Nouvelle tâche…" aria-label="Nouvelle tâche ${s.label}" autocomplete="off">
+            <button type="submit" class="icon-btn" aria-label="Ajouter">＋</button>
+          </form>` : ''}
+        </div>`;
+    }).join('');
+
+    return `
+      <article class="activity reveal ${revealed.has(act.id) ? 'in' : ''} ${isOpen ? 'open' : ''}" data-activity="${act.id}" data-reveal="${act.id}">
+        <div class="activity-head">
+          <span class="activity-index">${String(i + 1).padStart(2, '0')}</span>
+          <div class="activity-info">
+            <span class="activity-tag" ${ce} data-field="tag">${esc(act.tag)}</span>
+            <h3 class="activity-title" ${ce} data-field="title">${esc(act.title)}</h3>
+            <p class="activity-desc" ${ce} data-field="desc">${esc(act.desc)}</p>
+          </div>
+          <div class="activity-progress">
+            <div class="progress-num"><strong>${pct(c.done, c.total)}</strong><span>%</span></div>
+            ${barHTML(c, act.id)}
+            <div class="progress-legend">
+              <span><i class="dot-done"></i>${c.done} accomplie${c.done > 1 ? 's' : ''}</span>
+              <span><i class="dot-doing"></i>${c.doing} en cours</span>
+              <span><i class="dot-todo"></i>${c.todo} à exécuter</span>
+            </div>
+          </div>
+          <button type="button" class="activity-toggle" data-action="toggle" aria-expanded="${isOpen}">
+            <span class="toggle-label">${isOpen ? 'Réduire' : 'Détails'}</span><span class="toggle-icon">+</span>
+          </button>
+        </div>
+        <div class="activity-body">
+          <div class="activity-body-inner">
+            <div class="columns">${columns}</div>
+            ${editing ? `<div class="activity-admin">
+              <button type="button" class="icon-btn" data-action="move-up" ${i === 0 ? 'disabled' : ''}>↑ Monter</button>
+              <button type="button" class="icon-btn" data-action="move-down" ${i === state.activities.length - 1 ? 'disabled' : ''}>↓ Descendre</button>
+              <button type="button" class="icon-btn danger" data-action="del-activity">Supprimer l'activité</button>
+            </div>` : ''}
+          </div>
+        </div>
+      </article>`;
+  }
+
+  function renderActivities() {
+    const root = $('#activities');
+    root.innerHTML = state.activities.map(activityHTML).join('');
+    watchBars(root);
+    observeReveal(root);
+  }
+
+  function renderAll() {
+    renderTraits();
+    renderBindings();
+    renderStats();
+    renderGlobal();
+    renderActivities();
+    setEditableBindings();
+    observeReveal(document);
+  }
+
+  // Rafraîchit les éléments dépendant des tâches sans perdre l'état d'ouverture
+  function refreshProgress() {
+    renderStats();
+    renderGlobal();
+    renderActivities();
+    setEditableBindings();
+  }
+
+  /* ---------- Apparition au défilement ---------- */
+  const revealObserver = 'IntersectionObserver' in window ? new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { reveal(e.target); revealObserver.unobserve(e.target); } });
+  }, { threshold: 0.12 }) : null;
+  function reveal(el) {
+    el.classList.add('in');
+    if (el.dataset.reveal) revealed.add(el.dataset.reveal);
+  }
+  function observeReveal(root) {
+    $$('.reveal:not(.in)', root).forEach(el => revealObserver ? revealObserver.observe(el) : reveal(el));
+  }
+
+  /* ---------- Mode édition ---------- */
+  function setEditableBindings() {
+    $$('[data-edit]').forEach(el => {
+      if (editing) {
+        el.setAttribute('contenteditable', 'plaintext-only');
+        el.setAttribute('spellcheck', 'true');
+      } else {
+        el.removeAttribute('contenteditable');
+      }
+    });
+  }
+
+  function setEditing(on) {
+    editing = on;
+    document.body.classList.toggle('editing', on);
+    if (!on && location.hash === '#edit') history.replaceState(null, '', location.pathname + location.search);
+    renderAll();
+    if (on) toast('Mode édition : cliquez sur un texte pour le modifier');
+  }
+
+  const findActivity = el => {
+    const node = el.closest('[data-activity]');
+    return node ? state.activities.find(a => a.id === node.dataset.activity) : null;
+  };
+  const findTask = (act, el) => {
+    const node = el.closest('[data-task]');
+    return node && act ? act.tasks.find(t => t.id === node.dataset.task) : null;
+  };
+
+  function compressImage(file, max = 1400, quality = 0.82) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * scale);
+        c.height = Math.round(img.height * scale);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        resolve(c.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image illisible')); };
+      img.src = url;
+    });
+  }
+
+  function today() {
+    return new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  function setStatus(task, status) {
+    if (task.status === status) return;
+    task.status = status;
+    if (status === 'done') task.date = today();
+    else delete task.date;
+  }
+
+  /* ---------- Événements : activités ---------- */
+  const activitiesRoot = $('#activities');
+
+  activitiesRoot.addEventListener('click', e => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn || btn.tagName === 'FORM' || btn.tagName === 'INPUT') return;
+    const act = findActivity(btn);
+    if (!act) return;
+    const task = findTask(act, btn);
+    const action = btn.dataset.action;
+
+    if (action === 'toggle') {
+      const node = btn.closest('.activity');
+      const open = !node.classList.contains('open');
+      node.classList.toggle('open', open);
+      btn.setAttribute('aria-expanded', open);
+      $('.toggle-label', btn).textContent = open ? 'Réduire' : 'Détails';
+      open ? openActivities.add(act.id) : openActivities.delete(act.id);
+      return;
+    }
+    if (action === 'open-photo') {
+      openLightbox(task.photos, +btn.dataset.index, task.text);
+      return;
+    }
+    if (!editing) return;
+
+    if (action === 'set-status') setStatus(task, btn.dataset.status);
+    else if (action === 'del-photo') task.photos.splice(+btn.dataset.index, 1);
+    else if (action === 'del-task') {
+      if (!confirm('Supprimer cette tâche ?')) return;
+      act.tasks = act.tasks.filter(t => t !== task);
+    } else if (action === 'del-activity') {
+      if (!confirm(`Supprimer l'activité « ${act.title} » et toutes ses tâches ?`)) return;
+      state.activities = state.activities.filter(a => a !== act);
+    } else if (action === 'move-up' || action === 'move-down') {
+      const i = state.activities.indexOf(act);
+      const j = action === 'move-up' ? i - 1 : i + 1;
+      if (j < 0 || j >= state.activities.length) return;
+      [state.activities[i], state.activities[j]] = [state.activities[j], state.activities[i]];
+    } else return;
+
+    save();
+    refreshProgress();
+  });
+
+  activitiesRoot.addEventListener('submit', e => {
+    const form = e.target.closest('form[data-action="add-task"]');
+    if (!form) return;
+    e.preventDefault();
+    const input = form.elements.text;
+    const text = input.value.trim();
+    if (!text) return;
+    const act = findActivity(form);
+    const task = { id: uid(), text, status: form.dataset.status, photos: [] };
+    if (task.status === 'done') task.date = today();
+    act.tasks.push(task);
+    save();
+    refreshProgress();
+    const again = $(`[data-activity="${act.id}"] form[data-status="${task.status}"] input`);
+    if (again) again.focus();
+  });
+
+  activitiesRoot.addEventListener('change', async e => {
+    const input = e.target;
+    if (input.dataset.action !== 'add-photo' || !input.files.length) return;
+    const act = findActivity(input);
+    const task = findTask(act, input);
+    toast('Ajout des photos…');
+    try {
+      const imgs = await Promise.all(Array.from(input.files).map(f => compressImage(f)));
+      task.photos = (task.photos || []).concat(imgs);
+      save();
+      refreshProgress();
+      toast(imgs.length > 1 ? `${imgs.length} photos ajoutées` : 'Photo ajoutée');
+    } catch (err) {
+      toast('Impossible de lire cette image');
+    }
+  });
+
+  // Textes des activités et tâches
+  activitiesRoot.addEventListener('blur', e => {
+    const el = e.target;
+    if (!editing || !el.dataset || !el.dataset.field) return;
+    const act = findActivity(el);
+    if (!act) return;
+    const value = el.textContent.trim();
+    const target = el.closest('[data-task]') ? findTask(act, el) : act;
+    if (!value && el.dataset.field === 'text') { el.textContent = target.text; return; }
+    if (target[el.dataset.field] !== value) {
+      target[el.dataset.field] = value;
+      save();
+    }
+  }, true);
+
+  // Entrée valide le texte au lieu de créer un retour à la ligne
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey && e.target.isContentEditable) {
+      e.preventDefault();
+      e.target.blur();
+    }
+  });
+
+  // Glisser-déposer des tâches entre colonnes
+  let dragged = null;
+  activitiesRoot.addEventListener('dragstart', e => {
+    const li = e.target.closest && e.target.closest('.task');
+    if (!editing || !li) return;
+    dragged = { activity: li.closest('[data-activity]').dataset.activity, task: li.dataset.task };
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', dragged.task);
+    li.classList.add('dragging');
+  });
+  activitiesRoot.addEventListener('dragend', e => {
+    const li = e.target.closest && e.target.closest('.task');
+    if (li) li.classList.remove('dragging');
+    $$('.col.drop', activitiesRoot).forEach(c => c.classList.remove('drop'));
+    dragged = null;
+  });
+  activitiesRoot.addEventListener('dragover', e => {
+    const col = e.target.closest('.col');
+    if (!dragged || !col || col.closest('[data-activity]').dataset.activity !== dragged.activity) return;
+    e.preventDefault();
+    $$('.col.drop', activitiesRoot).forEach(c => c !== col && c.classList.remove('drop'));
+    col.classList.add('drop');
+  });
+  activitiesRoot.addEventListener('drop', e => {
+    const col = e.target.closest('.col');
+    if (!dragged || !col) return;
+    e.preventDefault();
+    const act = state.activities.find(a => a.id === dragged.activity);
+    const task = act && act.tasks.find(t => t.id === dragged.task);
+    if (!task) return;
+    // Repositionne la tâche avant l'élément survolé, sinon à la fin de la colonne
+    const over = e.target.closest('.task');
+    act.tasks = act.tasks.filter(t => t !== task);
+    setStatus(task, col.dataset.status);
+    const ref = over && over.dataset.task !== task.id ? act.tasks.findIndex(t => t.id === over.dataset.task) : -1;
+    if (ref >= 0) act.tasks.splice(ref, 0, task);
+    else act.tasks.push(task);
+    save();
+    refreshProgress();
+  });
+
+  /* ---------- Événements : textes du profil ---------- */
+  document.addEventListener('blur', e => {
+    const el = e.target;
+    if (!editing || !el.dataset || !el.dataset.edit) return;
+    const value = el.textContent.trim();
+    if (getPath(el.dataset.edit) === value) return;
+    setPath(el.dataset.edit, value);
+    save();
+    renderBindings();
+  }, true);
+
+  $('#addActivity').addEventListener('click', () => {
+    const act = { id: uid(), title: 'Nouvelle activité', tag: 'Projet', desc: 'Décrivez ce projet en une phrase.', tasks: [] };
+    state.activities.push(act);
+    openActivities.add(act.id);
+    save();
+    refreshProgress();
+    const title = $(`[data-activity="${act.id}"] .activity-title`);
+    title.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    title.focus();
+    document.execCommand && document.execCommand('selectAll', false, null);
+  });
+
+  /* ---------- Barre d'édition ---------- */
+  $('#editTrigger').addEventListener('click', e => { e.preventDefault(); setEditing(true); });
+  $('#exitEdit').addEventListener('click', () => setEditing(false));
+  window.addEventListener('hashchange', () => { if (location.hash === '#edit' && !editing) setEditing(true); });
+
+  $('#exportBtn').addEventListener('click', () => {
+    const content = '/*\n * Données publiées du site.\n * En mode édition, utilisez « Exporter » pour régénérer ce fichier,\n * puis remplacez js/data.js par le fichier téléchargé.\n */\nwindow.SITE_DATA = ' + JSON.stringify(state, null, 2) + ';\n';
+    const blob = new Blob([content], { type: 'text/javascript' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'data.js';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    toast('data.js téléchargé — remplacez js/data.js pour publier');
+  });
+
+  $('#importInput').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const json = text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
+      const data = JSON.parse(json);
+      if (!data.profile || !Array.isArray(data.activities)) throw new Error('format');
+      state = data;
+      save();
+      renderAll();
+      toast('Sauvegarde importée');
+    } catch (err) {
+      toast('Fichier non reconnu');
+    }
+  });
+
+  $('#resetBtn').addEventListener('click', async () => {
+    if (!confirm('Effacer toutes les modifications locales et revenir à la version publiée (js/data.js) ?')) return;
+    await store.clear().catch(() => {});
+    state = clone(window.SITE_DATA);
+    renderAll();
+    toast('Version publiée restaurée');
+  });
+
+  /* ---------- Visionneuse ---------- */
+  const lb = $('#lightbox');
+  let lbPhotos = [], lbIndex = 0, lbCaption = '';
+  function openLightbox(photos, index, caption) {
+    lbPhotos = photos; lbIndex = index; lbCaption = caption;
+    showPhoto();
+    lb.hidden = false;
+    document.body.classList.add('no-scroll');
+    $('.lightbox-close', lb).focus();
+  }
+  function showPhoto() {
+    $('img', lb).src = lbPhotos[lbIndex];
+    $('figcaption', lb).textContent = lbCaption + (lbPhotos.length > 1 ? ` — ${lbIndex + 1}/${lbPhotos.length}` : '');
+    $$('.lightbox-nav', lb).forEach(b => { b.hidden = lbPhotos.length < 2; });
+  }
+  function closeLightbox() { lb.hidden = true; document.body.classList.remove('no-scroll'); }
+  function step(d) { lbIndex = (lbIndex + d + lbPhotos.length) % lbPhotos.length; showPhoto(); }
+  lb.addEventListener('click', e => {
+    if (e.target.closest('.prev')) step(-1);
+    else if (e.target.closest('.next')) step(1);
+    else if (e.target.closest('.lightbox-close') || e.target === lb) closeLightbox();
+  });
+  document.addEventListener('keydown', e => {
+    if (lb.hidden) return;
+    if (e.key === 'Escape') closeLightbox();
+    if (e.key === 'ArrowLeft') step(-1);
+    if (e.key === 'ArrowRight') step(1);
+  });
+
+  /* ---------- Démarrage ---------- */
+  $('#year').textContent = new Date().getFullYear();
+  renderAll();
+  store.get().then(saved => {
+    if (saved && saved.profile && Array.isArray(saved.activities)) {
+      state = saved;
+      renderAll();
+    }
+    if (location.hash === '#edit') setEditing(true);
+  });
+})();

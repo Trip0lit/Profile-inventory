@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Galvez Martin</title>
+  <meta name="description" content="Galvez Martin — étudiant M2 au CEIPI, joueur d'échecs et de poker, bâtisseur de sites, d'agents autonomes, de mosaïques et de drones.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="grid-lines" aria-hidden="true"></div>
+
+  <!-- HERO -->
+  <header class="hero" id="top">
+    <canvas class="lava" id="lava" aria-hidden="true"></canvas>
+    <div class="hero-shade" aria-hidden="true"></div>
+
+    <nav class="nav">
+      <a class="logo" href="#top"><span data-edit="profile.logo"></span><sup>®</sup></a>
+      <div class="nav-links">
+        <a href="#profil">Profil</a>
+        <a href="#activites">Activités</a>
+        <a href="#contact">Contact</a>
+      </div>
+    </nav>
+
+    <div class="hero-inner">
+      <span class="pill"><span class="spark">✦</span> <span data-edit="profile.badge"></span></span>
+      <h1 class="hero-title" data-edit="profile.name"></h1>
+    </div>
+
+    <div class="hero-bottom">
+      <a class="scroll-cue" href="#profil">Défiler pour creuser <span class="arrow-down">↓</span></a>
+      <div class="hero-lead">
+        <p><strong data-edit="profile.leadStrong"></strong> <span data-edit="profile.lead"></span></p>
+        <a class="link-arrow" href="#activites">Voir mes activités <span>→</span></a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- PROFIL -->
+    <section class="section profile" id="profil">
+      <div class="split">
+        <h2 class="display">Joueur, juriste,<br><em>bâtisseur</em></h2>
+        <div class="split-right">
+          <p class="lead" data-edit="profile.intro"></p>
+          <a class="link-arrow" href="#activites">Explorer mes projets <span>→</span></a>
+        </div>
+      </div>
+
+      <div class="traits" id="traits"></div>
+
+      <dl class="stats" id="stats"></dl>
+    </section>
+
+    <!-- ACTIVITÉS -->
+    <section class="section activities-section" id="activites">
+      <div class="split">
+        <h2 class="display">Ce que je<br><em>construis</em></h2>
+        <div class="split-right">
+          <p class="lead">Chaque projet avance en trois temps : <span class="tag tag-done">Accompli</span> <span class="tag tag-doing">En cours</span> <span class="tag tag-todo">À exécuter</span>. La jauge suit ce qui est réellement terminé.</p>
+          <div class="global-progress" id="globalProgress"></div>
+        </div>
+      </div>
+
+      <div class="activities" id="activities"></div>
+
+      <button class="btn btn-ghost edit-only add-activity" id="addActivity" type="button">+ Ajouter une activité</button>
+    </section>
+
+    <!-- CONTACT -->
+    <section class="section contact" id="contact">
+      <h2 class="display huge">Parlons<em>-en</em></h2>
+      <div class="contact-links">
+        <a class="link-arrow" id="mailLink" href="#"><span data-edit="profile.email"></span> <span>→</span></a>
+        <a class="link-arrow" id="twitterLink" href="#" target="_blank" rel="noopener"><span data-edit="profile.twitter"></span> <span>→</span></a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>© <span id="year"></span> <span data-edit="profile.name"></span></span>
+    <a href="#edit" class="edit-trigger" id="editTrigger" title="Mode édition">✎ Éditer</a>
+  </footer>
+
+  <!-- Barre d'édition -->
+  <div class="editbar" id="editbar" role="toolbar" aria-label="Outils d'édition">
+    <span class="editbar-title"><span class="dot"></span> Mode édition</span>
+    <span class="editbar-status" id="saveStatus">Enregistré</span>
+    <div class="editbar-actions">
+      <button class="btn btn-small" id="exportBtn" type="button" title="Télécharger data.js à placer dans le dossier js/ pour publier">Exporter</button>
+      <label class="btn btn-small" title="Recharger une sauvegarde (data.js ou .json)">Importer<input type="file" id="importInput" accept=".js,.json,application/json,text/javascript" hidden></label>
+      <button class="btn btn-small btn-danger" id="resetBtn" type="button" title="Effacer les modifications locales">Réinitialiser</button>
+      <button class="btn btn-small btn-solid" id="exitEdit" type="button">Terminer</button>
+    </div>
+  </div>
+
+  <!-- Visionneuse photo -->
+  <div class="lightbox" id="lightbox" hidden>
+    <button class="lightbox-close" type="button" aria-label="Fermer">×</button>
+    <button class="lightbox-nav prev" type="button" aria-label="Photo précédente">←</button>
+    <figure><img alt=""><figcaption></figcaption></figure>
+    <button class="lightbox-nav next" type="button" aria-label="Photo suivante">→</button>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/lava.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
