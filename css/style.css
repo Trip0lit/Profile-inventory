@@ -63,13 +63,13 @@ button, input { font: inherit; color: inherit; }
   position: absolute;
   inset: 0;
   z-index: -2;
-  background: url('../assets/hero.jpg?v=8') center 42% / cover no-repeat;
+  background: url('../assets/hero.jpg?v=9') center 42% / cover no-repeat;
   transform: scale(1.06);
   animation: liftoff 2.4s var(--ease) forwards;
 }
 @keyframes liftoff { to { transform: scale(1); } }
 @media (max-width: 700px) {
-  .hero-photo { background-image: url('../assets/hero-small.jpg?v=8'); background-position: 48% center; }
+  .hero-photo { background-image: url('../assets/hero-small.jpg?v=9'); background-position: 48% center; }
 }
 .hero-shade {
   position: absolute;
@@ -798,3 +798,23 @@ body.editing .edit-trigger { visibility: hidden; }
 @media (max-width: 520px) {
   .activities { grid-template-columns: 1fr; }
 }
+
+/* ============ Publication ============ */
+body.unpublished #exportBtn { background: var(--flame); border-color: var(--flame); }
+body:not(.unpublished) #exportBtn { opacity: .7; }
+.publish-dialog {
+  width: min(560px, calc(100vw - 32px));
+  border: 0;
+  border-radius: var(--radius);
+  padding: 0;
+  background: var(--bg-2);
+  color: var(--ink);
+  box-shadow: 0 30px 80px rgba(16, 27, 39, .4);
+}
+.publish-dialog::backdrop { background: rgba(16, 27, 39, .6); backdrop-filter: blur(4px); }
+.publish-inner { padding: 28px; }
+.publish-inner h2 { font-family: var(--display); font-weight: 700; font-size: 26px; letter-spacing: -0.03em; line-height: 1.1; margin: 10px 0 12px; }
+.publish-note { margin: 0 0 16px; color: var(--muted); font-size: 15px; }
+.publish-note code { font-family: var(--mono); font-size: 13px; background: var(--line); padding: 1px 5px; border-radius: 4px; }
+.publish-steps { margin: 0 0 22px; padding-left: 20px; display: grid; gap: 8px; font-size: 15px; }
+.publish-actions { display: flex; flex-wrap: wrap; gap: 8px; }

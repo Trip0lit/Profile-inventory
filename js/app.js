@@ -63,7 +63,11 @@
   const seenBars = new Set();
   const revealed = new Set(); // évite de rejouer l'apparition à chaque re-rendu
 
+  // Page GitHub où déposer le nouveau js/data.js pour publier les modifications
+  const PUBLISH_UPLOAD_URL = 'https://github.com/Trip0lit/Profile-inventory/upload/main/js';
+
   /* ---------- Sauvegarde ---------- */
+  let published = JSON.stringify(window.SITE_DATA);
   let saveTimer = null;
   function save() {
     const status = $('#saveStatus');
@@ -71,7 +75,7 @@
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
       store.set(state)
-        .then(() => { status.textContent = 'Enregistré'; })
+        .then(() => { status.textContent = 'Enregistré sur cet appareil'; updatePublishState(); })
         .catch(() => { status.textContent = 'Échec de l\'enregistrement'; toast('Stockage local plein ou indisponible'); });
     }, 300);
   }
@@ -370,7 +374,8 @@
     document.body.classList.toggle('editing', on);
     if (!on && location.hash === '#edit') history.replaceState(null, '', location.pathname + location.search);
     renderAll();
-    if (on) toast('Mode édition : cliquez sur un texte pour le modifier');
+    updatePublishState();
+    if (on) toast(hasUnpublished() ? 'Des modifications ne sont pas encore en ligne : cliquez sur « Publier »' : 'Mode édition : cliquez sur un texte pour le modifier');
   }
 
   const findActivity = el => {
@@ -648,8 +653,18 @@
   $('#exitEdit').addEventListener('click', () => setEditing(false));
   window.addEventListener('hashchange', () => { if (location.hash === '#edit' && !editing) setEditing(true); });
 
-  $('#exportBtn').addEventListener('click', () => {
-    const content = '/*\n * Données publiées du site.\n * En mode édition, utilisez « Exporter » pour régénérer ce fichier,\n * puis remplacez js/data.js par le fichier téléchargé.\n */\nwindow.SITE_DATA = ' + JSON.stringify(state, null, 2) + ';\n';
+  // Signale les modifications enregistrées sur cet appareil mais pas encore en ligne
+  function hasUnpublished() {
+    return JSON.stringify(state) !== published;
+  }
+  function updatePublishState() {
+    const pending = hasUnpublished();
+    document.body.classList.toggle('unpublished', pending);
+    $('#exportBtn').textContent = pending ? 'Publier' : 'Publié ✓';
+  }
+
+  function downloadDataFile() {
+    const content = '/*\n * Données publiées du site.\n * En mode édition, utilisez « Publier » pour régénérer ce fichier,\n * puis remplacez js/data.js par le fichier téléchargé.\n */\nwindow.SITE_DATA = ' + JSON.stringify(state, null, 2) + ';\n';
     const blob = new Blob([content], { type: 'text/javascript' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -658,7 +673,43 @@
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    toast('data.js téléchargé — remplacez js/data.js pour publier');
+    return blob.size;
+  }
+
+  function openPublishDialog(size) {
+    let dlg = $('#publishDialog');
+    if (!dlg) {
+      dlg = document.createElement('dialog');
+      dlg.id = 'publishDialog';
+      dlg.className = 'publish-dialog';
+      document.body.appendChild(dlg);
+      dlg.addEventListener('click', e => { if (e.target === dlg || e.target.closest('[data-close]')) dlg.close(); });
+    }
+    const weight = size < 1048576 ? `${Math.max(1, Math.round(size / 1024))} Ko` : `${(size / 1048576).toFixed(1)} Mo`;
+    dlg.innerHTML = `
+      <div class="publish-inner">
+        <span class="eyebrow">Publier les modifications</span>
+        <h2>Encore une étape pour que tout le monde les voie</h2>
+        <p class="publish-note">Tes textes, tâches et photos sont pour l'instant enregistrés <strong>seulement sur cet appareil</strong>.
+        Pour les mettre en ligne (et les voir sur ton téléphone), il faut remplacer le fichier <code>js/data.js</code> du site.</p>
+        <ol class="publish-steps">
+          <li><strong>data.js</strong> vient d'être téléchargé (${weight}).</li>
+          <li>Ouvre la page d'envoi GitHub ci-dessous et <strong>glisse-y le fichier data.js</strong>.</li>
+          <li>Clique sur <strong>« Commit changes »</strong> en bas de la page.</li>
+          <li>Attends 1 à 2 minutes, puis recharge le site : les modifications sont en ligne.</li>
+        </ol>
+        <div class="publish-actions">
+          <a class="btn btn-solid" href="${PUBLISH_UPLOAD_URL}" target="_blank" rel="noopener">Ouvrir la page d'envoi GitHub ↗</a>
+          <button type="button" class="btn" data-action="redownload">Retélécharger data.js</button>
+          <button type="button" class="btn" data-close>Fermer</button>
+        </div>
+      </div>`;
+    $('[data-action="redownload"]', dlg).addEventListener('click', downloadDataFile);
+    dlg.showModal();
+  }
+
+  $('#exportBtn').addEventListener('click', () => {
+    openPublishDialog(downloadDataFile());
   });
 
   $('#importInput').addEventListener('change', async e => {
@@ -731,13 +782,33 @@
   window.addEventListener('pageshow', e => { if (e.persisted) reloadFromStore(); });
 
   /* ---------- Démarrage ---------- */
+  // Recharge js/data.js sans cache : une publication récente est visible tout de suite (téléphone compris)
+  function loadPublished() {
+    if (location.protocol === 'file:') return Promise.resolve();
+    return fetch('js/data.js', { cache: 'no-store' })
+      .then(r => (r.ok ? r.text() : Promise.reject()))
+      .then(text => {
+        const data = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
+        if (data.profile && Array.isArray(data.activities)) {
+          window.SITE_DATA = data;
+          published = JSON.stringify(data);
+        }
+      })
+      .catch(() => {});
+  }
+
   $('#year').textContent = new Date().getFullYear();
   renderAll();
-  store.get().then(saved => {
+  Promise.all([loadPublished(), store.get()]).then(([, saved]) => {
     if (saved && saved.profile && Array.isArray(saved.activities)) {
       state = normalize(saved);
-      renderAll();
+      // La version locale correspond déjà à ce qui est en ligne : on suit la version publiée
+      if (!hasUnpublished()) store.clear().catch(() => {});
+    } else {
+      state = clone(window.SITE_DATA);
     }
+    renderAll();
+    updatePublishState();
     if (location.hash === '#edit') setEditing(true);
   });
 })();
