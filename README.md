@@ -1,6 +1,7 @@
 # Profile-inventory
 
 Site personnel de Galvez Martin, en trois parties : accueil (titre + présentation rapide), À propos (portrait + fiche personnelle), Activités (cartes de projets, trois par ligne). Un clic sur une carte ouvre la page de l'activité avec sa progression (`activite.html`).
+La photo de décollage ouvre le site ; ses couleurs (nuages, ciel, flamme, sol) servent de palette au reste.
 Site 100 % statique (HTML/CSS/JS), sans dépendance ni étape de build.
 
 ## Voir le site
@@ -43,5 +44,5 @@ activite.html   page d'une activité (progression détaillée), ?id=<identifiant
 css/style.css   styles
 js/data.js      contenu publié (profil, activités, tâches, photos)
 js/app.js       rendu, mode édition, photos, sauvegarde
-js/lava.js      fond animé « coulée de lave » du hero
+assets/         photo d'en-tête (hero.jpg, hero-small.jpg pour mobile)
 ```
