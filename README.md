@@ -1,6 +1,6 @@
 # Profile-inventory
 
-Site personnel de Galvez Martin, en trois parties : accueil (titre + présentation rapide), À propos (portrait + fiche personnelle), Activités (cartes de projets avec suivi).
+Site personnel de Galvez Martin, en trois parties : accueil (titre + présentation rapide), À propos (portrait + fiche personnelle), Activités (cartes de projets, trois par ligne). Un clic sur une carte ouvre la progression de l'activité dans un nouvel onglet (`activite.html`).
 Site 100 % statique (HTML/CSS/JS), sans dépendance ni étape de build.
 
 ## Voir le site
@@ -18,7 +18,7 @@ python3 -m http.server 8000   # puis http://localhost:8000
    - cliquer sur n'importe quel texte (nom, présentation, cartes, titres d'activités…) pour le modifier ;
    - dans « À propos » : ajouter sa photo de portrait, ajouter/supprimer des lignes de la fiche « En bref » ;
    - sur une carte d'activité : **＋ Couverture** pour choisir l'image (sinon la première photo d'une tâche est utilisée) ;
-   - dans une activité, ouvrir **Voir la progression** : ajouter une tâche dans **Accompli**, **En cours** ou **À exécuter** ;
+   - cliquer sur une carte d'activité : sa page s'ouvre dans un nouvel onglet (en mode édition si vous y étiez) ; ajouter une tâche dans **Accompli**, **En cours** ou **À exécuter** ;
    - changer le statut d'une tâche avec les boutons ou en la **glissant** d'une colonne à l'autre ;
    - **＋ Photo** ajoute une ou plusieurs photos à une tâche (redimensionnées automatiquement), cliquer dessus pour les agrandir ;
    - ajouter, déplacer ou supprimer des activités.
@@ -38,7 +38,8 @@ Les visiteurs voient le contenu de `js/data.js`. Pour publier ce que vous avez s
 ## Structure
 
 ```
-index.html      page unique
+index.html      accueil, À propos, liste des activités
+activite.html   page d'une activité (progression détaillée), ?id=<identifiant>
 css/style.css   styles
 js/data.js      contenu publié (profil, activités, tâches, photos)
 js/app.js       rendu, mode édition, photos, sauvegarde
