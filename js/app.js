@@ -801,9 +801,10 @@
           <ol class="publish-steps">
             <li>Ouvre <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">la page de création de clé GitHub ↗</a>.</li>
             <li>Nom : « site ». Dans <em>Repository access</em>, choisis <em>Only select repositories</em> → <strong>${esc(REPO.repo)}</strong>.</li>
-            <li>Dans <em>Permissions</em>, ajoute <strong>Contents</strong> en <strong>Read and write</strong>.</li>
+            <li>Plus bas, dans <em>Permissions</em> (visible seulement après avoir choisi le dépôt), clique sur <em>Add permissions</em> ou ouvre <em>Repository permissions</em>, choisis <strong>Contents</strong> et règle-le sur <strong>Read and write</strong>.</li>
             <li>Clique sur <em>Generate token</em>, copie la clé et colle-la ici.</li>
           </ol>
+          <p class="token-alt">Tu ne trouves pas ? Utilise plutôt <a href="https://github.com/settings/tokens/new?scopes=public_repo&description=site" target="_blank" rel="noopener">une clé « classique » ↗</a> : la case <em>public_repo</em> est déjà cochée, descends et clique sur <em>Generate token</em>.</p>
           <input class="token-input" type="password" name="token" placeholder="github_pat_…" autocomplete="off" spellcheck="false">
           <label class="token-remember"><input type="checkbox" name="remember" checked> Mémoriser la clé sur cet appareil</label>
         </div>`}

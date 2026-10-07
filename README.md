@@ -37,7 +37,8 @@ Le bouton **Publier** (orange tant qu'il reste des modifications) les envoie dir
 
 **Une seule fois par appareil**, il faut une clé d'accès GitHub (fine-grained token) :
 [créer la clé](https://github.com/settings/personal-access-tokens/new) → *Only select repositories* : `Profile-inventory`
-→ *Permissions* : **Contents : Read and write** → *Generate token*, puis la coller dans la fenêtre « Publier ».
+→ *Permissions* (apparaît une fois le dépôt choisi) → *Add permissions* → **Contents** → **Read and write** → *Generate token*, puis la coller dans la fenêtre « Publier ».
+Alternative plus simple : une [clé classique](https://github.com/settings/tokens/new?scopes=public_repo&description=site) avec la case `public_repo` (dépôt public).
 La clé reste dans le navigateur de l'appareil (jamais dans les fichiers du site).
 
 Le site en ligne est à jour 1 à 2 minutes après (GitHub Pages ; `js/data.js` est toujours rechargé sans cache).
@@ -46,7 +47,7 @@ Le site en ligne est à jour 1 à 2 minutes après (GitHub Pages ; `js/data.js` 
 
 ## Mise à jour en ligne (cache)
 
-Les liens vers `css/style.css`, `js/app.js`, `js/data.js` et la photo portent un numéro de version (`?v=10`).
+Les liens vers `css/style.css`, `js/app.js`, `js/data.js` et la photo portent un numéro de version (`?v=11`).
 Après avoir modifié un de ces fichiers, augmentez ce numéro dans `index.html`, `activite.html` (et `css/style.css` pour la photo)
 pour que les navigateurs des visiteurs rechargent la nouvelle version au lieu de l'ancienne gardée en cache.
 

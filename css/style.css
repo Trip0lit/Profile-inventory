@@ -63,13 +63,13 @@ button, input { font: inherit; color: inherit; }
   position: absolute;
   inset: 0;
   z-index: -2;
-  background: url('../assets/hero.jpg?v=10') center 42% / cover no-repeat;
+  background: url('../assets/hero.jpg?v=11') center 42% / cover no-repeat;
   transform: scale(1.06);
   animation: liftoff 2.4s var(--ease) forwards;
 }
 @keyframes liftoff { to { transform: scale(1); } }
 @media (max-width: 700px) {
-  .hero-photo { background-image: url('../assets/hero-small.jpg?v=10'); background-position: 48% center; }
+  .hero-photo { background-image: url('../assets/hero-small.jpg?v=11'); background-position: 48% center; }
 }
 .hero-shade {
   position: absolute;
@@ -831,3 +831,4 @@ body:not(.unpublished) #exportBtn { opacity: .7; }
 .publish-status.error { color: #c22; font-weight: 500; }
 .publish-backup { margin: 16px 0 0; font-size: 13px; color: var(--faint); }
 .publish-dialog.busy .btn { pointer-events: none; opacity: .6; }
+.token-alt { font-size: 13px; color: var(--muted); margin: -4px 0 12px !important; }
