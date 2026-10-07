@@ -41,7 +41,9 @@
     return {
       get: () => tx('readonly', s => s.get(KEY)).catch(() => null),
       set: v => tx('readwrite', s => s.put(v, KEY)),
-      clear: () => tx('readwrite', s => s.delete(KEY))
+      clear: () => tx('readwrite', s => s.delete(KEY)),
+      getItem: key => tx('readonly', s => s.get(key)).catch(() => null),
+      setItem: (key, v) => tx('readwrite', s => s.put(v, key)).catch(() => {})
     };
   })();
 
@@ -63,11 +65,24 @@
   const seenBars = new Set();
   const revealed = new Set(); // évite de rejouer l'apparition à chaque re-rendu
 
-  // Page GitHub où déposer le nouveau js/data.js pour publier les modifications
-  const PUBLISH_UPLOAD_URL = 'https://github.com/Trip0lit/Profile-inventory/upload/main/js';
+  /* ---------- Publication sur GitHub ---------- */
+  // Dépôt qui héberge le site (déduit de l'adresse github.io, sinon valeur par défaut)
+  const REPO = (() => {
+    const host = location.hostname.match(/^([^.]+)\.github\.io$/i);
+    const first = location.pathname.split('/').filter(Boolean)[0];
+    if (host && first && !first.endsWith('.html')) return { owner: host[1], repo: first, branch: 'main' };
+    return { owner: 'Trip0lit', repo: 'Profile-inventory', branch: 'main' };
+  })();
+  const TOKEN_KEY = 'gm-github-token';
+  const PHOTO_DIR = 'assets/photos/';
+
+  // Photos tout juste publiées : affichées depuis l'appareil le temps que GitHub Pages les mette en ligne
+  let photoCache = {};
+  const srcOf = src => photoCache[src] || src;
 
   /* ---------- Sauvegarde ---------- */
   let published = JSON.stringify(window.SITE_DATA);
+  let lastPublished = null;
   let saveTimer = null;
   function save() {
     const status = $('#saveStatus');
@@ -164,7 +179,7 @@
     const c = counts(state.activities.flatMap(a => a.tasks));
     $('#portrait').innerHTML = `
       ${p.photo
-        ? `<img class="portrait-img" src="${p.photo}" alt="Portrait de ${esc(p.name)}">`
+        ? `<img class="portrait-img" src="${srcOf(p.photo)}" alt="Portrait de ${esc(p.name)}">`
         : `<div class="portrait-placeholder" aria-hidden="true"><span>${esc(initials(p.name))}</span></div>`}
       ${editing ? `<div class="portrait-tools">
         <label class="icon-btn">${p.photo ? 'Changer la photo' : '＋ Ajouter ma photo'}<input type="file" accept="image/*" hidden data-action="set-portrait"></label>
@@ -198,7 +213,7 @@
   function taskHTML(act, task) {
     const photos = (task.photos || []).map((src, i) => `
       <div class="thumb">
-        <button type="button" class="thumb-open" data-action="open-photo" data-index="${i}" aria-label="Agrandir la photo"><img src="${src}" alt="" loading="lazy"></button>
+        <button type="button" class="thumb-open" data-action="open-photo" data-index="${i}" aria-label="Agrandir la photo"><img src="${srcOf(src)}" alt="" loading="lazy"></button>
         ${editing ? `<button type="button" class="thumb-del" data-action="del-photo" data-index="${i}" aria-label="Supprimer la photo">×</button>` : ''}
       </div>`).join('');
     const date = task.date ? `<time class="task-date">${esc(task.date)}</time>` : '';
@@ -225,7 +240,7 @@
     const cover = act.cover || (act.tasks.find(t => t.photos && t.photos.length) || {}).photos?.[0];
     const num = String(i + 1).padStart(2, '0');
     const media = cover
-      ? `<img class="card-cover" src="${cover}" alt="" loading="lazy">`
+      ? `<img class="card-cover" src="${srcOf(cover)}" alt="" loading="lazy">`
       : `<div class="card-placeholder" style="--hue:${(i * 23) % 60}"><span>${num}</span></div>`;
     return `
       <div class="card-media">
@@ -655,7 +670,8 @@
 
   // Signale les modifications enregistrées sur cet appareil mais pas encore en ligne
   function hasUnpublished() {
-    return JSON.stringify(state) !== published;
+    const current = JSON.stringify(state);
+    return current !== published && current !== lastPublished;
   }
   function updatePublishState() {
     const pending = hasUnpublished();
@@ -663,54 +679,189 @@
     $('#exportBtn').textContent = pending ? 'Publier' : 'Publié ✓';
   }
 
-  function downloadDataFile() {
-    const content = '/*\n * Données publiées du site.\n * En mode édition, utilisez « Publier » pour régénérer ce fichier,\n * puis remplacez js/data.js par le fichier téléchargé.\n */\nwindow.SITE_DATA = ' + JSON.stringify(state, null, 2) + ';\n';
-    const blob = new Blob([content], { type: 'text/javascript' });
+  const dataFileContent = data => '/*\n * Données publiées du site (générées par le bouton « Publier »).\n * Les photos sont dans assets/photos/.\n */\nwindow.SITE_DATA = ' + JSON.stringify(data, null, 2) + ';\n';
+
+  function downloadBackup() {
+    const blob = new Blob([dataFileContent(state)], { type: 'text/javascript' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'data.js';
+    a.download = 'sauvegarde-site.js';
     document.body.appendChild(a);
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    return blob.size;
   }
 
-  function openPublishDialog(size) {
+  async function hashOf(text) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(buf).slice(0, 8), b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  // Remplace chaque photo intégrée (data:…) par un fichier assets/photos/<empreinte>.jpg
+  async function extractPhotos(data) {
+    const files = new Map();
+    async function convert(src) {
+      if (typeof src !== 'string' || !src.startsWith('data:image/')) return src;
+      const b64 = src.slice(src.indexOf(',') + 1);
+      const path = PHOTO_DIR + (await hashOf(b64)) + (src.startsWith('data:image/png') ? '.png' : '.jpg');
+      files.set(path, { b64, dataURL: src });
+      return path;
+    }
+    data.profile.photo = await convert(data.profile.photo);
+    for (const act of data.activities) {
+      if (act.cover) act.cover = await convert(act.cover);
+      for (const task of act.tasks) task.photos = await Promise.all((task.photos || []).map(convert));
+    }
+    return files;
+  }
+
+  async function gh(token, method, path, body) {
+    const res = await fetch(`https://api.github.com/repos/${REPO.owner}/${REPO.repo}${path}`, {
+      method,
+      headers: Object.assign(
+        { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
+        body ? { 'Content-Type': 'application/json' } : {}
+      ),
+      body: body ? JSON.stringify(body) : undefined
+    });
+    if (!res.ok) {
+      const err = new Error(`GitHub ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
+    return res.json();
+  }
+
+  // Un seul commit contenant js/data.js et les nouvelles photos
+  async function publishToGitHub(token, step) {
+    const data = clone(state);
+    const files = await extractPhotos(data);
+    step('Connexion à GitHub…');
+    const ref = await gh(token, 'GET', `/git/ref/heads/${REPO.branch}`);
+    const head = await gh(token, 'GET', `/git/commits/${ref.object.sha}`);
+    const tree = await gh(token, 'GET', `/git/trees/${head.tree.sha}?recursive=1`);
+    const existing = new Set(tree.tree.map(e => e.path));
+    const uploads = [...files].filter(([path]) => !existing.has(path));
+    const entries = [];
+    for (let i = 0; i < uploads.length; i++) {
+      const [path, file] = uploads[i];
+      step(`Envoi des photos (${i + 1}/${uploads.length})…`);
+      const blob = await gh(token, 'POST', '/git/blobs', { content: file.b64, encoding: 'base64' });
+      entries.push({ path, mode: '100644', type: 'blob', sha: blob.sha });
+    }
+    step('Envoi des textes…');
+    entries.push({ path: 'js/data.js', mode: '100644', type: 'blob', content: dataFileContent(data) });
+    const newTree = await gh(token, 'POST', '/git/trees', { base_tree: head.tree.sha, tree: entries });
+    if (newTree.sha !== head.tree.sha) {
+      const commit = await gh(token, 'POST', '/git/commits', {
+        message: 'Mise à jour du contenu depuis le site',
+        tree: newTree.sha,
+        parents: [ref.object.sha]
+      });
+      await gh(token, 'PATCH', `/git/refs/heads/${REPO.branch}`, { sha: commit.sha });
+    }
+    return { data, files };
+  }
+
+  function publishErrorMessage(err) {
+    if (err.status === 401) return 'Clé refusée : elle est incorrecte ou a expiré. Crée-en une nouvelle.';
+    if (err.status === 403 || err.status === 404) return `La clé n'a pas le droit d'écrire dans ${REPO.owner}/${REPO.repo}. Vérifie « Contents : Read and write » et l'accès à ce dépôt.`;
+    if (err.status === 409 || err.status === 422) return 'Le site a changé entre-temps sur GitHub. Réessaie.';
+    if (err.status) return `GitHub a répondu une erreur (${err.status}). Réessaie dans un instant.`;
+    return 'Connexion à GitHub impossible. Vérifie ta connexion internet.';
+  }
+
+  function getToken() {
+    try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; }
+  }
+  function setToken(value) {
+    try { value ? localStorage.setItem(TOKEN_KEY, value) : localStorage.removeItem(TOKEN_KEY); } catch (e) { /* stockage indisponible */ }
+  }
+
+  let sessionToken = '';
+  function openPublishDialog() {
     let dlg = $('#publishDialog');
     if (!dlg) {
       dlg = document.createElement('dialog');
       dlg.id = 'publishDialog';
       dlg.className = 'publish-dialog';
       document.body.appendChild(dlg);
-      dlg.addEventListener('click', e => { if (e.target === dlg || e.target.closest('[data-close]')) dlg.close(); });
+      dlg.addEventListener('click', e => { if (e.target === dlg && !dlg.classList.contains('busy')) dlg.close(); });
     }
-    const weight = size < 1048576 ? `${Math.max(1, Math.round(size / 1024))} Ko` : `${(size / 1048576).toFixed(1)} Mo`;
+    const token = getToken() || sessionToken;
     dlg.innerHTML = `
-      <div class="publish-inner">
+      <form class="publish-inner" method="dialog">
         <span class="eyebrow">Publier les modifications</span>
-        <h2>Encore une étape pour que tout le monde les voie</h2>
+        <h2>Mettre le site en ligne</h2>
         <p class="publish-note">Tes textes, tâches et photos sont pour l'instant enregistrés <strong>seulement sur cet appareil</strong>.
-        Pour les mettre en ligne (et les voir sur ton téléphone), il faut remplacer le fichier <code>js/data.js</code> du site.</p>
-        <ol class="publish-steps">
-          <li><strong>data.js</strong> vient d'être téléchargé (${weight}).</li>
-          <li>Ouvre la page d'envoi GitHub ci-dessous et <strong>glisse-y le fichier data.js</strong>.</li>
-          <li>Clique sur <strong>« Commit changes »</strong> en bas de la page.</li>
-          <li>Attends 1 à 2 minutes, puis recharge le site : les modifications sont en ligne.</li>
-        </ol>
+        « Publier » les envoie directement sur GitHub : le site est à jour pour tout le monde 1 à 2 minutes après.</p>
+        ${token ? `<p class="publish-note">Clé GitHub enregistrée sur cet appareil. <button type="button" class="text-btn" data-action="forget-token">Changer de clé</button></p>` : `
+        <div class="token-help">
+          <p><strong>À faire une seule fois :</strong> créer une clé d'accès GitHub.</p>
+          <ol class="publish-steps">
+            <li>Ouvre <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">la page de création de clé GitHub ↗</a>.</li>
+            <li>Nom : « site ». Dans <em>Repository access</em>, choisis <em>Only select repositories</em> → <strong>${esc(REPO.repo)}</strong>.</li>
+            <li>Dans <em>Permissions</em>, ajoute <strong>Contents</strong> en <strong>Read and write</strong>.</li>
+            <li>Clique sur <em>Generate token</em>, copie la clé et colle-la ici.</li>
+          </ol>
+          <input class="token-input" type="password" name="token" placeholder="github_pat_…" autocomplete="off" spellcheck="false">
+          <label class="token-remember"><input type="checkbox" name="remember" checked> Mémoriser la clé sur cet appareil</label>
+        </div>`}
+        <p class="publish-status" role="status" aria-live="polite"></p>
         <div class="publish-actions">
-          <a class="btn btn-solid" href="${PUBLISH_UPLOAD_URL}" target="_blank" rel="noopener">Ouvrir la page d'envoi GitHub ↗</a>
-          <button type="button" class="btn" data-action="redownload">Retélécharger data.js</button>
-          <button type="button" class="btn" data-close>Fermer</button>
+          <button type="button" class="btn btn-solid" data-action="publish-now">Publier maintenant</button>
+          <button type="button" class="btn" data-action="close-dialog">Fermer</button>
         </div>
-      </div>`;
-    $('[data-action="redownload"]', dlg).addEventListener('click', downloadDataFile);
+        <p class="publish-backup"><button type="button" class="text-btn" data-action="backup">Télécharger une sauvegarde</button> (pour la garder sur ton ordinateur)</p>
+      </form>`;
+
+    const status = $('.publish-status', dlg);
+    const setStatus = (msg, kind = '') => { status.textContent = msg; status.className = 'publish-status ' + kind; };
+
+    $('[data-action="close-dialog"]', dlg).addEventListener('click', () => dlg.close());
+    $('[data-action="backup"]', dlg).addEventListener('click', downloadBackup);
+    const forget = $('[data-action="forget-token"]', dlg);
+    if (forget) forget.addEventListener('click', () => { setToken(''); sessionToken = ''; openPublishDialog(); });
+
+    $('[data-action="publish-now"]', dlg).addEventListener('click', async e => {
+      const btn = e.currentTarget;
+      const input = $('.token-input', dlg);
+      const key = input ? input.value.trim() : token;
+      if (!key) { setStatus('Colle d\'abord ta clé GitHub.', 'error'); input.focus(); return; }
+      dlg.classList.add('busy');
+      btn.disabled = true;
+      try {
+        const { data, files } = await publishToGitHub(key, msg => setStatus(msg));
+        if (input) {
+          if ($('[name="remember"]', dlg).checked) setToken(key);
+          else sessionToken = key;
+        }
+        // Les photos deviennent des fichiers : on garde une copie locale le temps de leur mise en ligne
+        const kept = {};
+        for (const [path, file] of files) kept[path] = file.dataURL;
+        photoCache = kept;
+        store.setItem('photos', photoCache);
+        state = data;
+        window.SITE_DATA = clone(data);
+        published = lastPublished = JSON.stringify(data);
+        store.setItem('lastPublished', lastPublished);
+        save();
+        renderAll();
+        updatePublishState();
+        setStatus('C\'est publié ! Le site en ligne sera à jour dans 1 à 2 minutes.', 'ok');
+        btn.textContent = 'Publié ✓';
+      } catch (err) {
+        setStatus(publishErrorMessage(err), 'error');
+        btn.disabled = false;
+      } finally {
+        dlg.classList.remove('busy');
+      }
+    });
+
     dlg.showModal();
   }
 
-  $('#exportBtn').addEventListener('click', () => {
-    openPublishDialog(downloadDataFile());
-  });
+  $('#exportBtn').addEventListener('click', openPublishDialog);
 
   $('#importInput').addEventListener('change', async e => {
     const file = e.target.files[0];
@@ -749,7 +900,7 @@
     $('.lightbox-close', lb).focus();
   }
   function showPhoto() {
-    $('img', lb).src = lbPhotos[lbIndex];
+    $('img', lb).src = srcOf(lbPhotos[lbIndex]);
     $('figcaption', lb).textContent = lbCaption + (lbPhotos.length > 1 ? ` — ${lbIndex + 1}/${lbPhotos.length}` : '');
     $$('.lightbox-nav', lb).forEach(b => { b.hidden = lbPhotos.length < 2; });
   }
@@ -799,11 +950,13 @@
 
   $('#year').textContent = new Date().getFullYear();
   renderAll();
-  Promise.all([loadPublished(), store.get()]).then(([, saved]) => {
+  Promise.all([loadPublished(), store.get(), store.getItem('photos'), store.getItem('lastPublished')]).then(([, saved, photos, last]) => {
+    photoCache = photos || {};
+    lastPublished = last || null;
     if (saved && saved.profile && Array.isArray(saved.activities)) {
       state = normalize(saved);
       // La version locale correspond déjà à ce qui est en ligne : on suit la version publiée
-      if (!hasUnpublished()) store.clear().catch(() => {});
+      if (JSON.stringify(state) === published) store.clear().catch(() => {});
     } else {
       state = clone(window.SITE_DATA);
     }
