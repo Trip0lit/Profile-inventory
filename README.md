@@ -30,17 +30,23 @@ Les modifications sont enregistrées automatiquement **dans votre navigateur** (
 ## Publier les modifications
 
 Les modifications (textes, tâches, **photos**) sont d'abord enregistrées **uniquement sur l'appareil** utilisé.
-Elles ne sont visibles ailleurs (téléphone, visiteurs) qu'une fois publiées. Le bouton **Publier** devient orange quand il reste des modifications à mettre en ligne :
+Le bouton **Publier** (orange tant qu'il reste des modifications) les envoie directement sur GitHub, en un seul commit :
 
-1. Mode édition → **Publier** : télécharge un nouveau `data.js` (photos incluses) et affiche les étapes.
-2. Sur la page d'envoi GitHub (`js/`), glisser `data.js` puis « Commit changes ».
-3. Après 1 à 2 minutes, le site en ligne est à jour (le site recharge toujours `js/data.js` sans cache).
+- `js/data.js` : textes et tâches (léger, quelques Ko) ;
+- `assets/photos/<empreinte>.jpg` : chaque photo devient un vrai fichier (seules les nouvelles sont envoyées).
 
-**Importer** recharge une sauvegarde `data.js`, **Réinitialiser** efface les modifications locales et revient à la version publiée.
+**Une seule fois par appareil**, il faut une clé d'accès GitHub (fine-grained token) :
+[créer la clé](https://github.com/settings/personal-access-tokens/new) → *Only select repositories* : `Profile-inventory`
+→ *Permissions* : **Contents : Read and write** → *Generate token*, puis la coller dans la fenêtre « Publier ».
+La clé reste dans le navigateur de l'appareil (jamais dans les fichiers du site).
+
+Le site en ligne est à jour 1 à 2 minutes après (GitHub Pages ; `js/data.js` est toujours rechargé sans cache).
+
+**Importer** recharge une sauvegarde, **Réinitialiser** efface les modifications locales et revient à la version publiée.
 
 ## Mise à jour en ligne (cache)
 
-Les liens vers `css/style.css`, `js/app.js`, `js/data.js` et la photo portent un numéro de version (`?v=9`).
+Les liens vers `css/style.css`, `js/app.js`, `js/data.js` et la photo portent un numéro de version (`?v=10`).
 Après avoir modifié un de ces fichiers, augmentez ce numéro dans `index.html`, `activite.html` (et `css/style.css` pour la photo)
 pour que les navigateurs des visiteurs rechargent la nouvelle version au lieu de l'ancienne gardée en cache.
 
@@ -53,4 +59,5 @@ css/style.css   styles
 js/data.js      contenu publié (profil, activités, tâches, photos)
 js/app.js       rendu, mode édition, photos, sauvegarde
 assets/         photo d'en-tête (hero.jpg, hero-small.jpg pour mobile)
+assets/photos/  photos des activités, du portrait et des couvertures (créées par « Publier »)
 ```

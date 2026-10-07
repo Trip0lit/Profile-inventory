@@ -63,13 +63,13 @@ button, input { font: inherit; color: inherit; }
   position: absolute;
   inset: 0;
   z-index: -2;
-  background: url('../assets/hero.jpg?v=9') center 42% / cover no-repeat;
+  background: url('../assets/hero.jpg?v=10') center 42% / cover no-repeat;
   transform: scale(1.06);
   animation: liftoff 2.4s var(--ease) forwards;
 }
 @keyframes liftoff { to { transform: scale(1); } }
 @media (max-width: 700px) {
-  .hero-photo { background-image: url('../assets/hero-small.jpg?v=9'); background-position: 48% center; }
+  .hero-photo { background-image: url('../assets/hero-small.jpg?v=10'); background-position: 48% center; }
 }
 .hero-shade {
   position: absolute;
@@ -818,3 +818,16 @@ body:not(.unpublished) #exportBtn { opacity: .7; }
 .publish-note code { font-family: var(--mono); font-size: 13px; background: var(--line); padding: 1px 5px; border-radius: 4px; }
 .publish-steps { margin: 0 0 22px; padding-left: 20px; display: grid; gap: 8px; font-size: 15px; }
 .publish-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.text-btn { border: 0; background: none; padding: 0; color: var(--sky-deep); text-decoration: underline; cursor: pointer; font-size: inherit; }
+.token-help { margin: 4px 0 6px; padding: 16px; border-radius: 12px; background: var(--paper); border: 1px solid var(--line); font-size: 14.5px; }
+.token-help p { margin: 0 0 10px; }
+.token-help a { color: var(--sky-deep); text-decoration: underline; }
+.token-help .publish-steps { margin-bottom: 14px; font-size: 14px; }
+.token-input { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--bg-2); font-family: var(--mono); font-size: 13px; }
+.token-input:focus { outline: none; border-color: var(--sky); }
+.token-remember { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13.5px; color: var(--muted); }
+.publish-status { min-height: 1.4em; margin: 12px 0; font-size: 14px; color: var(--muted); }
+.publish-status.ok { color: #2f7a3b; font-weight: 500; }
+.publish-status.error { color: #c22; font-weight: 500; }
+.publish-backup { margin: 16px 0 0; font-size: 13px; color: var(--faint); }
+.publish-dialog.busy .btn { pointer-events: none; opacity: .6; }
