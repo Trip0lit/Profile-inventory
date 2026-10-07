@@ -87,7 +87,7 @@ window.SITE_DATA = {
           "photos": []
         }
       ],
-      "cover": "assets/photos/4f55f9dacad9aa5d.jpg"
+      "cover": "assets/photos/53d8beb9039d47c0.jpg"
     },
     {
       "id": "vente",
@@ -118,9 +118,21 @@ window.SITE_DATA = {
           "text": "Signer le premier client",
           "status": "todo",
           "photos": []
+        },
+        {
+          "id": "1ibe99ci",
+          "text": "apprendre a publier un site, à lier un programme de réservation au site",
+          "status": "todo",
+          "photos": []
+        },
+        {
+          "id": "zv23tfd6",
+          "text": "apprendre à acquérir un nom de domaine",
+          "status": "todo",
+          "photos": []
         }
       ],
-      "cover": "assets/photos/a7d3ea1eae3e7269.jpg"
+      "cover": "assets/photos/362fe76dfc7381e4.jpg"
     },
     {
       "id": "agent",
@@ -137,14 +149,16 @@ window.SITE_DATA = {
         {
           "id": "a2",
           "text": "Écrire la boucle de génération de tweets",
-          "status": "doing",
-          "photos": []
+          "status": "done",
+          "photos": [],
+          "date": "7 oct. 2026"
         },
         {
           "id": "a3",
           "text": "Ajouter la planification automatique",
-          "status": "todo",
-          "photos": []
+          "status": "done",
+          "photos": [],
+          "date": "7 oct. 2026"
         },
         {
           "id": "a4",
@@ -153,7 +167,7 @@ window.SITE_DATA = {
           "photos": []
         }
       ],
-      "cover": "assets/photos/53d8beb9039d47c0.jpg"
+      "cover": "assets/photos/93b71f12c39b597b.jpg"
     },
     {
       "id": "twitter",
@@ -228,7 +242,7 @@ window.SITE_DATA = {
     },
     {
       "id": "drone",
-      "title": "Construction d'un drone fpv 3",
+      "title": "Construction drone fpv 3",
       "tag": "Hardware",
       "desc": "Assembler un drone de A à Z : châssis, moteurs, électronique, premier vol.",
       "tasks": [
@@ -378,6 +392,55 @@ window.SITE_DATA = {
         }
       ],
       "cover": "assets/photos/4411caaefa9f1534.jpg"
+    },
+    {
+      "id": "fss5nnj1",
+      "title": "VP AMCEIPI",
+      "tag": "Direction",
+      "desc": "Vice présidence de l'association AMCEIPI",
+      "tasks": [
+        {
+          "id": "1ldet61h",
+          "text": "être élu",
+          "status": "done",
+          "photos": [],
+          "date": "7 oct. 2026"
+        }
+      ],
+      "cover": "assets/photos/1c6dec721d93e461.jpg"
+    },
+    {
+      "id": "d06e670p",
+      "title": "Mémoire",
+      "tag": "Rédaction",
+      "desc": "écriture d'un mémoire",
+      "tasks": [
+        {
+          "id": "dwusebmy",
+          "text": "trouver un sujet",
+          "status": "doing",
+          "photos": []
+        },
+        {
+          "id": "blgi055x",
+          "text": "Trouver un directeur de mémoire",
+          "status": "todo",
+          "photos": []
+        },
+        {
+          "id": "dlj2syrv",
+          "text": "travail de recherche",
+          "status": "todo",
+          "photos": []
+        },
+        {
+          "id": "3bgx5byx",
+          "text": "travail d'écriture",
+          "status": "todo",
+          "photos": []
+        }
+      ],
+      "cover": "assets/photos/669e7112247b4f85.jpg"
     }
   ]
 };
