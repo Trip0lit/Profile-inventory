@@ -8,12 +8,12 @@ window.SITE_DATA = {
     "logo": "G. Martin",
     "name": "Galvez Martin",
     "badge": "M2 au CEIPI · Propriété intellectuelle",
-    "leadStrong": "Juriste en propriété intellectuelle le jour, bâtisseur le reste du temps",
-    "lead": "— sites web, agents autonomes, mosaïque et drones. Je construis, je mesure, j'itère.",
+    "leadStrong": "Curiositymaxxing Retardmaxxing lovemaxxing",
+    "lead": "— Nobody is an atheist at x50 laverage",
     "role": "Étudiant M2 · CEIPI",
     "tagline": "Juriste en propriété intellectuelle · Joueur · Bâtisseur",
     "intro": "Étudiant en M2 au CEIPI, je passe du droit des brevets aux lignes de code, d'une table de poker à un échiquier. Ce site est mon inventaire : ce que j'ai bouclé, ce qui avance, et ce qui reste à attaquer.",
-    "motto": "Je préfère livrer que promettre.",
+    "motto": "Just build something",
     "photo": "assets/photos/668305897d47294e.jpg",
     "heroCredit": "Photo : SpaceX",
     "email": "contact@exemple.fr",
@@ -142,7 +142,7 @@ window.SITE_DATA = {
       "tasks": [
         {
           "id": "a1",
-          "text": "Obtenir l'accès à l'API X / Twitter",
+          "text": "Obtenir l'accès à l'API X / Claude.ai",
           "status": "done",
           "photos": []
         },
@@ -163,8 +163,22 @@ window.SITE_DATA = {
         {
           "id": "a4",
           "text": "Laisser tourner l'agent une semaine sans intervention",
-          "status": "todo",
+          "status": "doing",
           "photos": []
+        },
+        {
+          "id": "7c9au1cs",
+          "text": "constituer une BDD de posts",
+          "status": "done",
+          "photos": [],
+          "date": "8 oct. 2026"
+        },
+        {
+          "id": "rgmnq6ui",
+          "text": "construire la personae de l'agent",
+          "status": "done",
+          "photos": [],
+          "date": "8 oct. 2026"
         }
       ],
       "cover": "assets/photos/93b71f12c39b597b.jpg"
