@@ -75,12 +75,6 @@ window.SITE_DATA = {
           "photos": []
         },
         {
-          "id": "s3",
-          "text": "Créer un template réutilisable",
-          "status": "todo",
-          "photos": []
-        },
-        {
           "id": "s4",
           "text": "Mettre en place un hébergement et un nom de domaine",
           "status": "doing",
@@ -179,6 +173,12 @@ window.SITE_DATA = {
           "status": "done",
           "photos": [],
           "date": "8 oct. 2026"
+        },
+        {
+          "id": "ru9urcij",
+          "text": "dev Grock bot",
+          "status": "todo",
+          "photos": []
         }
       ],
       "cover": "assets/photos/93b71f12c39b597b.jpg"
