@@ -455,6 +455,27 @@ window.SITE_DATA = {
         }
       ],
       "cover": "assets/photos/669e7112247b4f85.jpg"
+    },
+    {
+      "id": "tomf3c9f",
+      "title": "vidéos full IA",
+      "tag": "montage",
+      "desc": "éditer une vidéo par IA",
+      "tasks": [
+        {
+          "id": "yj1utmka",
+          "text": "trouver un moyen de créer des vidéos par IA",
+          "status": "todo",
+          "photos": []
+        },
+        {
+          "id": "0qv54u9a",
+          "text": "Higgsfield AI ou open source",
+          "status": "todo",
+          "photos": []
+        }
+      ],
+      "cover": "assets/photos/74e382dd39a30e1d.jpg"
     }
   ]
 };
